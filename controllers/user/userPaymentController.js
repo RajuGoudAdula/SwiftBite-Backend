@@ -60,8 +60,8 @@ exports.createOrder = async (req, res) => {
           customer_email: user.email,
         },
         order_meta: {
-          return_url: `http://localhost:3000/payment-status?order_id=${newOrder._id}&session_id=${sessionId}`,
-          notify_url: `https://8f68-27-6-34-17.ngrok-free.app/api/user/payment/webhook`,
+          return_url: `https://swiftbiteapp.netlify.app/payment-status?order_id=${newOrder._id}&session_id=${sessionId}`,
+          notify_url: `https://swiftbite-backend-production.up.railway.app/api/user/payment/webhook`,
           payment_methods: "cc,dc,upi",
         },
       };
