@@ -40,7 +40,6 @@ exports.getMenuOfCanteen = async (req, res) => {
 
     res.status(200).json(menu);
   } catch (error) {
-    console.error("Error fetching menu:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -91,7 +90,6 @@ exports.updateCollegeCanteen = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating college and canteen:', error);
     res.status(500).json({
       success: false,
       message: 'Something went wrong while updating college and canteen.',

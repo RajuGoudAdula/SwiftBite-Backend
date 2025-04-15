@@ -3,7 +3,7 @@ const Canteen = require('../../models/Canteen');
 
 exports.addReview = async (req, res) => {
   try {
-    const { userId, orderId, canteenId, rating, review } = req.body;
+    const { userId, orderId, canteenId, rating, review ,isAnonymous} = req.body;
     const { productId } = req.params;
     if (!productId || !userId || !orderId || !canteenId || !rating || !review) {
       return res.status(400).json({ message: "All required fields must be provided." });
@@ -37,16 +37,15 @@ exports.addReview = async (req, res) => {
       canteenId,
       rating,
       review,
+      isAnonymous,
       createdAt: new Date(),
     };
 
     reviewDoc.reviews.push(newReview);
     await reviewDoc.save();
-    console.log(reviewDoc);
 
     res.status(201).json({ message: "Review posted successfully", review: newReview });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -55,7 +54,7 @@ exports.addReview = async (req, res) => {
 exports.updateReview = async (req, res) => {
   try {
     const { productId, orderId } = req.params;
-    const { userId, rating, review, isAnonymous, images, collegeId, canteenId } = req.body;
+    const { userId, rating, review, isAnonymous, images, collegeId, canteenId} = req.body;
 
     if (!productId || !orderId || !userId) {
       return res.status(400).json({ message: "Product ID, Order ID, and User ID are required." });
@@ -99,7 +98,6 @@ exports.updateReview = async (req, res) => {
 
     res.status(200).json({ message: "Review updated successfully", review: formattedReview });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -136,7 +134,6 @@ exports.updateReview = async (req, res) => {
   
       res.status(200).json({ message: "Review deleted successfully" ,orderId,productId});
     } catch (error) {
-      console.error(error);
       res.status(500).json({ message: "Internal server error" });
     }
   };
@@ -187,7 +184,6 @@ exports.getUserReview = async (req, res) => {
 
     return res.status(200).json(formattedReviews);
   } catch (error) {
-    console.error("Error fetching user review:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -237,7 +233,6 @@ exports.likeReview = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error while liking review:", error);
     return res.status(500).json({ message: "Error while liking review" });
   }
 };
@@ -287,7 +282,6 @@ exports.disLikeReview = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error while disliking review:", error);
     return res.status(500).json({ message: "Error while disliking review" });
   }
 };

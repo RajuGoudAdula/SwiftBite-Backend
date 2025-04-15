@@ -38,11 +38,7 @@ exports.addProduct = async (req, res) => {
         category,
         ingredients,
         allergens,
-        calories,
-        protein,
-        fat,
-        carbohydrates,
-        fiber,
+        nutritionalInfo,
         tags,
         netWeight,
         unit
@@ -56,11 +52,11 @@ exports.addProduct = async (req, res) => {
         ingredients: ingredients.map(item => item.replace(/['"]+/g, '')), // Remove extra quotes
         allergens,
         nutritionalInfo: {
-          calories: Number(calories) || 0,
-          protein: Number(protein) || 0,
-          fat: Number(fat) || 0,
-          carbohydrates: Number(carbohydrates) || 0,
-          fiber: Number(fiber) || 0
+          calories: Number(nutritionalInfo.calories) || 0,
+          protein: Number(nutritionalInfo.protein) || 0,
+          fat: Number(nutritionalInfo.fat) || 0,
+          carbohydrates: Number(nutritionalInfo.carbohydrates) || 0,
+          fiber: Number(nutritionalInfo.fiber) || 0
         },
         tags,
         netWeight,

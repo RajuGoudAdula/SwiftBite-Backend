@@ -21,7 +21,15 @@ exports.getUserCart = async (req, res) => {
     }
 
     // 2. Find existing cart
-    let cart = await Cart.findOne({ userId });
+    let cart = await Cart.findOne({ userId })
+                            .populate({
+                              path: "items.productId",
+                              select: "image name unit netWeight"
+                            })
+                            .populate({
+                              path: "items.itemId",
+                              select: "price offers"
+                            });
 
     // 3. Check canteen match
     if (cart) {
@@ -51,7 +59,6 @@ exports.getUserCart = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error in getUserCart:", error);
     res.status(500).json({
       message: "Failed to process cart",
       error: error.message
@@ -64,10 +71,8 @@ exports.addToCart = async (req, res) => {
     try {
       const { itemId, quantity } = req.body;
       const { userId } = req.params;
-  
-      const canteenMenuItem = await CanteenMenuItem.findById(itemId)
-                                        .populate("productId","image");
-                                        console.log(canteenMenuItem);
+      const canteenMenuItem = await CanteenMenuItem.findById(itemId);
+                      
       if (!canteenMenuItem) return res.status(404).json({ message: "Item not found" });
   
       if (canteenMenuItem.stock < quantity) {
@@ -92,28 +97,44 @@ exports.addToCart = async (req, res) => {
       }
   
       const existingItem = cart.items.find(
-        item => item.productId.toString() === canteenMenuItem.productId._id.toString()
+        item => item.productId.toString() === canteenMenuItem.productId.toString()
       );
       
-  
       if (existingItem) {
         existingItem.quantity += quantity;
-        existingItem.totalPrice = existingItem.quantity * existingItem.price;
+        if(canteenMenuItem.offers.length>0){
+          existingItem.totalPrice = (canteenMenuItem.price - canteenMenuItem.price * canteenMenuItem.offers[0].discount/100)*existingItem.quantity;
+        }else{
+          existingItem.totalPrice = existingItem.quantity * canteenMenuItem.price;
+        }
       } else {
+        let totalPrice ;
+        if(canteenMenuItem.offers.length>0){
+          totalPrice = (canteenMenuItem.price - (canteenMenuItem.price * canteenMenuItem.offers[0].discount/100))*quantity;
+        }else{
+          totalPrice = quantity * canteenMenuItem.price;
+        }
         cart.items.push({
           productId: canteenMenuItem.productId,
-          name: canteenMenuItem.name,
-          image: canteenMenuItem.productId.image,
-          price: canteenMenuItem.price,
+          itemId: canteenMenuItem._id,
           quantity,
-          totalPrice: canteenMenuItem.price * quantity,
+          totalPrice: totalPrice,
         });
       }
   
       cart.totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
       await cart.save();
-  
-      res.status(200).json({ message: "Item added to cart", cart });
+      const populatedCart = await Cart.findById(cart._id)
+      .populate({
+        path: "items.productId",
+        select: "image name unit netWeight"
+      })
+      .populate({
+        path: "items.itemId",
+        select: "price offers"
+      });
+
+      res.status(200).json({ message: "Item added to cart", cart : populatedCart });
     } catch (error) {
       res.status(500).json({ message: "Error adding to cart", error });
     }
@@ -125,16 +146,23 @@ exports.updateCartItem = async (req, res) => {
   try {
     const { itemId, delta } = req.body;
     const {userId} = req.params;
-
    
-    const cart = await Cart.findOne({ userId });
+    const cart = await Cart.findOne({ userId })
+                                .populate({
+                                  path: "items.itemId",
+                                  select: "price offers"
+                                });
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
     const item = cart.items.find((item) => item.productId.toString() === itemId);
     if (!item) return res.status(404).json({ message: "Item not found in cart" });
 
     item.quantity = delta;
-    item.totalPrice = item.price * delta;
+    if(item.itemId.offers.length > 0){
+      item.totalPrice = ((item.itemId.price)-(item.itemId.price*item.itemId.offers[0].discount/100))* delta;
+    }else{
+      item.totalPrice = item.itemId.price*delta;
+    }
 
     cart.totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
     await cart.save();
@@ -228,6 +256,8 @@ exports.getItemDetails = async (req, res) => {
         allergens: productDetails.allergens,
         nutritionalInfo: productDetails.nutritionalInfo,
         tags: productDetails.tags,
+        unit:productDetails.unit,
+        netWeight : productDetails.netWeight,
         createdAt: productDetails.createdAt,
         updatedAt: productDetails.updatedAt,
       },
@@ -255,3 +285,4 @@ exports.getItemDetails = async (req, res) => {
   }
 };
 
+console

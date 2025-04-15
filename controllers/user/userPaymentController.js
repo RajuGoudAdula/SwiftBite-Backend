@@ -60,8 +60,8 @@ exports.createOrder = async (req, res) => {
           customer_email: user.email,
         },
         order_meta: {
-          return_url: `https://swiftbiteapp.netlify.app/payment-status?order_id=${newOrder._id}&session_id=${sessionId}`,
-          notify_url: `https://swiftbite-backend-production.up.railway.app/api/user/payment/webhook`,
+          return_url: `${process.env.FRONTEND_URL}/payment-status?order_id=${newOrder._id}&session_id=${sessionId}`,
+          notify_url: `${process.env.BACKEND_URL}/api/user/payment/webhook`,
           payment_methods: "cc,dc,upi",
         },
       };
@@ -79,7 +79,6 @@ exports.createOrder = async (req, res) => {
         orderData: response.data,
       });
     } catch (error) {
-      console.error("Error creating order:", error);
       res.status(500).json({
         message: "Error creating order",
         error: error.response ? error.response.data : error.message,
@@ -121,7 +120,6 @@ exports.paymentWebhook = async (req, res) => {
 
     res.status(200).send("OK");
   } catch (error) {
-    console.error("Webhook processing error:", error);
     res.status(500).json({ message: "Error processing payment" });
   }
 }; 
@@ -138,7 +136,6 @@ exports.getPaymentStatus = async (req, res) => {
 
     res.json({ paymentStatus: order.paymentStatus });
   } catch (error) {
-    console.error("Error fetching payment status:", error);
     res.status(500).json({ message: "Failed to fetch payment status" });
   }
 };
@@ -181,7 +178,6 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment not successful" });
     }
   } catch (error) {
-    console.error("Payment verification error:", error);
     res.status(500).json({ message: "Error verifying payment" });
   }
 };

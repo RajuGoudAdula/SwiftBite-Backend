@@ -6,15 +6,9 @@ const cartItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  name: {
-    type: String,
-    required: true,
-  },
-  image: {
-    type: String,
-  },
-  price: {
-    type: Number,
+  itemId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "CanteenMenuItem",
     required: true,
   },
   quantity: {

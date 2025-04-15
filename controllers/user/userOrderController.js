@@ -9,11 +9,22 @@ const initiateCashfreeRefund = require("../../utils/initiateCashfreeRefund"); //
 exports.getUserOrders = async (req, res) => {
   try {
     const { userId , canteenId } = req.params;
-    const orders = await Order.find({ userId ,canteenId }).sort({ createdAt: -1 });
-
+    const orders = await Order.find({ userId, canteenId })
+                                    .sort({ createdAt: -1 })
+                                    .populate({
+                                      path: "items.productId",
+                                      select: "image name unit netWeight"
+                                    })
+                                    .populate({
+                                      path:"canteenId",
+                                      select:"name"
+                                    })
+                                    .populate({
+                                      path:"collegeId",
+                                      select:"name"
+                                    });
     res.status(200).json({ orders });
   } catch (error) {
-    console.error("Error fetching user orders:", error);
     res.status(500).json({ message: "Error retrieving orders" });
   }
 };
@@ -27,7 +38,6 @@ exports.getOrderById = async (req, res) => {
 
     res.status(200).json({ order });
   } catch (error) {
-    console.error("Error fetching order:", error);
     res.status(500).json({ message: "Error retrieving order" });
   }
 };
@@ -46,7 +56,6 @@ exports.updateOrderStatus = async (req, res) => {
 
     res.status(200).json({ message: "Order status updated successfully", order });
   } catch (error) {
-    console.error("Error updating order status:", error);
     res.status(500).json({ message: "Error updating order" });
   }
 };
@@ -85,7 +94,6 @@ exports.cancelOrder = async (req, res) => {
 
     res.status(200).json({ message: "Order canceled successfully", order });
   } catch (error) {
-    console.error("Error canceling order:", error);
     res.status(500).json({ message: "Error canceling order" });
   }
 };
@@ -113,4 +121,3 @@ const deleteUnpaidOrders = async () => {
 
 // Run this function every 5 minutes
 setInterval(deleteUnpaidOrders, 5 * 60 * 1000);
-

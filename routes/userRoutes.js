@@ -9,6 +9,7 @@ const {getUserOrders,cancelOrder} = require('../controllers/user/userOrderContro
 const {getProfile,sendEmailOtp,verifyEmailOtp , verifyPassword,updatePassword,updateUsername} =require('../controllers/user/userProfileController');
 const {addReview,updateReview,deleteReview,getUserReview,likeReview,disLikeReview} = require('../controllers/user/userReviewController');
 const { fetchPopularItems, debouncedSearch } = require('../controllers/user/userSearchController');
+const {addFavouriteItem,removeFavouriteItem,getFavouriteItems} = require('../controllers/user/userFavouriteItemsController');
 
 
 const router = express.Router();
@@ -54,4 +55,8 @@ router.get('/fetch-user-review/:orderId/:userId',authMiddleware("user"),getUserR
 
 router.get('/menu/popular',fetchPopularItems);
 router.get('/menu/search',debouncedSearch);
+
+router.post('/add-favourite-item/:userId/:canteenId',authMiddleware("user"),addFavouriteItem);
+router.delete('/remove-favourite-item/:userId/:canteenId/:itemId',authMiddleware("user"),removeFavouriteItem);
+router.get('/fetch-favourite-items/:userId',authMiddleware("user"),getFavouriteItems);
 module.exports = router;

@@ -6,14 +6,6 @@ const orderItemSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  name: {
-    type: String,
-    required: true,
-  },
-  image: {
-    type: String,
-    
-  },
   price: {
     type: Number,
     required: true,
@@ -25,7 +17,20 @@ const orderItemSchema = new mongoose.Schema({
   totalPrice: {
     type: Number,
     required: true,
-  }
+  },
+  offers: [
+    {
+      offerType: {
+        type: String, // Example: "Buy 1 Get 1", "10% Off"
+      },
+      discount: {
+        type: Number, // Example: 50% Off => 50
+      },
+      validUntil: {
+        type: Date,
+      },
+    }
+  ],
 }, { timestamps: true });
 
 const orderSchema = new mongoose.Schema({

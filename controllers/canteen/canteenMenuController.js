@@ -34,10 +34,16 @@ exports.getMenuItems = async (req, res) => {
         deliveryTime : 0, 
         isAvailable : false
       };
+  
       const newMenuItem = new MenuItem(itemData);
       await newMenuItem.save();
-  
-      res.status(201).json({ message: "Menu item added successfully", newMenuItem });
+      
+      const populatedMenuItem = await newMenuItem.populate('productId');
+
+      res.status(201).json({
+        message: "Menu item added successfully",
+        newMenuItem: populatedMenuItem
+      });
     } catch (error) {
       res.status(500).json({ message: "Error adding menu item", error });
     }
@@ -79,8 +85,9 @@ exports.updateMenuItem = async (req, res) => {
         await cart.save();
       }
     }
+    const populatedMenuItem = await updatedMenuItem.populate('productId');
 
-    res.status(200).json({ message: "Menu item updated successfully", updatedMenuItem });
+    res.status(200).json({ message: "Menu item updated successfully", updatedMenuItem : populatedMenuItem });
   } catch (error) {
     res.status(500).json({ message: "Error updating menu item", error: error.message });
   }

@@ -68,7 +68,6 @@ const fetchPopularItems = async (req, res) => {
       data: popularItems
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({
       success: false,
       error: 'Server Error'
@@ -165,7 +164,6 @@ const debouncedSearch = async (req, res) => {
         data: searchResults,
       });
     } catch (err) {
-      console.error("Search error:", err);
       return res.status(500).json({
         success: false,
         error: "Server Error",
