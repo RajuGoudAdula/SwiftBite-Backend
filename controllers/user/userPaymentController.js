@@ -61,7 +61,7 @@ exports.createOrder = async (req, res) => {
         },
         order_meta: {
           return_url: `https://swiftbiteapp.netlify.app/payment-status?order_id=${newOrder._id}&session_id=${sessionId}`,
-          notify_url: `https://swiftbite-backend-production.up.railway.app/api/user/payment/webhook`,
+          notify_url: "https://swiftbite-backend-production.up.railway.app/api/user/payment/webhook",
           payment_methods: "cc,dc,upi",
         },
       };
