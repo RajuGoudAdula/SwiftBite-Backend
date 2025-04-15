@@ -15,7 +15,7 @@ exports.createOrder = async (req, res) => {
     try {
       const { userId } = req.params;
       const { canteenId, totalAmount, cartItems, paymentMethod ,collegeId } = req.body;
-
+     
       // Find user
       const user = await User.findById(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
@@ -25,12 +25,12 @@ exports.createOrder = async (req, res) => {
   
       // Map cart items
       const items = cartItems.map((item) => ({
-        productId: item.productId,
-        name: item.name,
-        image: item.image,
-        price: item.price,
+        productId: item.productId._id,
+        name: item.productId.name,
+        price: item.itemId.price,
         quantity: item.quantity,
-        totalPrice: item.price * item.quantity,
+        totalPrice: item.totalPrice,
+        offers : item.itemId.offers,
       }));
   
       // Create a new order with sessionId
