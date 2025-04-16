@@ -246,6 +246,8 @@ exports.verifyUser = async (req, res) => {
     }
 
     res.status(200).json({
+      message : "Verified successfully",
+      success: true,
       user: {
         id: user._id,
         email: user.email,
