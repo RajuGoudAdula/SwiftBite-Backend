@@ -15,27 +15,38 @@ exports.getTodayOrders = async (req, res) => {
       createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() },
     });
 
-    const change = todayCount - yesterdayCount;
-    const positive = change >= 0;
+    const changeValue = todayCount - yesterdayCount;
+    const positive = changeValue >= 0;
+    const change = (positive ? "+" : "-") + changeValue + " from yesterday";
 
-    res.status(200).json({ count: todayCount, change: `${change} from yesterday`, positive });
+    res.status(200).json({ count: todayCount, change, positive });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // 2. Pending Orders
 exports.getPendingOrders = async (req, res) => {
   try {
-    const count = await Order.countDocuments({ orderStatus: 'Pending' });
-    const change = "+3 from yesterday"; // Optional: implement logic if needed
-    const positive = true; // Placeholder
+    const today = moment().startOf('day');
+    const yesterday = moment().subtract(1, 'day').startOf('day');
 
-    res.status(200).json({ count, change, positive });
+    const todayPendingCount = await Order.countDocuments({ createdAt: { $gte: today.toDate() } });
+    const yesterdayPendingCount = await Order.countDocuments({
+      createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() },
+    });
+    // Calculate the change
+    const changeValue = todayPendingCount - yesterdayPendingCount;
+    const positive = changeValue >= 0;
+    const change = (positive ? "+" : "-") + changeValue + " from yesterday";
+
+    res.status(200).json({ count: todayPendingCount, change, positive });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // 3. Total Revenue
 exports.getTotalRevenue = async (req, res) => {
@@ -44,11 +55,11 @@ exports.getTotalRevenue = async (req, res) => {
     const yesterday = moment().subtract(1, 'day').startOf('day');
 
     const todayRevenueAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: today.toDate() }, paymentStatus: 'paid' } },
+      { $match: { createdAt: { $gte: today.toDate() }, paymentStatus: 'Paid' } },
       { $group: { _id: null, revenue: { $sum: '$totalAmount' } } },
     ]);
     const yesterdayRevenueAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() }, paymentStatus: 'paid' } },
+      { $match: { createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() }, paymentStatus: 'Paid' } },
       { $group: { _id: null, revenue: { $sum: '$totalAmount' } } },
     ]);
 
@@ -113,7 +124,7 @@ exports.getPopularItem = async (req, res) => {
 // 5. Recent Activity
 exports.getRecentActivity = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }).limit(5).populate('items.itemId');
+    const orders = await Order.find().sort({ createdAt: -1 }).limit(5).populate('items.productId');
     const activity = orders.map(order => ({
       message: `Order placed by ${order.userId || 'Unknown User'} for ₹${order.totalAmount}`,
       timeAgo: moment(order.createdAt).fromNow(),
