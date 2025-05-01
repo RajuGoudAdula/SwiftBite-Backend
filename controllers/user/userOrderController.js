@@ -54,6 +54,17 @@ exports.updateOrderStatus = async (req, res) => {
     order.orderStatus = orderStatus;
     await order.save();
 
+    await sendNotification({
+      userId: order.userId,
+      receiverRole: 'student',
+      title: `Order ${order.orderStatus}`,
+      message: `Your order #${order._id} is now "${order.orderStatus}".`,
+      type: 'order',
+      relatedRef: order._id,
+      refModel: 'Order',
+    });
+    
+
     res.status(200).json({ message: "Order status updated successfully", order });
   } catch (error) {
     res.status(500).json({ message: "Error updating order" });

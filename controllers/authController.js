@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const sendOTP = require('../utils/sendOTP');
-const axios = require('axios');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -198,7 +197,7 @@ exports.login = async (req, res) => {
     // ✅ Find User
     const user = await User.findOne({ email })
                 .populate("college", "name") 
-                .populate("canteen", "name"); 
+                .populate("canteen", "name status"); 
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -213,6 +212,8 @@ exports.login = async (req, res) => {
     // ✅ Generate Token
     const token = generateToken(user);
 
+   
+    
     res.status(200).json({
       success: true,
       message: "Login successful",

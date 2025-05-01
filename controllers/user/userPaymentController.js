@@ -4,6 +4,7 @@ const Order = require("../../models/Order");
 const Payment = require("../../models/Payment");
 const User = require("../../models/User");
 const { Cashfree } = require("cashfree-pg");
+const { sendNotification } = require("../../services/NotificationService");
 
 // Configure Cashfree
 Cashfree.XClientId = process.env.CASHFREE_APP_ID;
@@ -71,6 +72,33 @@ exports.createOrder = async (req, res) => {
      
       newOrder.sessionId=response.data.payment_session_id;
       await newOrder.save();
+      
+      await sendNotification({
+        userId: userId,
+        receiverRole: 'student',
+        title: 'Order Placed Successfully',
+        message: `Your order #${newOrder._id} has been placed. We'll notify you when it's ready.`,
+        type: 'order',
+        relatedRef: newOrder._id,
+        refModel: 'Order',
+      });
+
+      const canteenUser = await User.findOne(
+        { role: "canteen", canteen: canteenId },
+        { _id: 1 } // Only select the _id field
+      );
+      
+      await sendNotification({
+        userId: canteenUser._id, // canteen staff userId
+        canteenId: canteenId,  // optional, if you're grouping by canteen
+        receiverRole: 'canteen',
+        title: 'New Order Received',
+        message: `Order #${order._id} placed by ${user.name}. Please prepare it.`,
+        type: 'order',
+        relatedRef: newOrder._id,
+        refModel: 'Order',
+      });
+      
       
       // Send session ID and payment details to frontend
       res.status(200).json({

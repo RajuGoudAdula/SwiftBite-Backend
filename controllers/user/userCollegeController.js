@@ -86,7 +86,7 @@ exports.updateCollegeCanteen = async (req, res) => {
       success: true,
       message: 'College & Canteen updated successfully.',
       college: { _id: college._id, name: college.name },
-      canteen: { _id: canteen._id, name: canteen.name }
+      canteen: { _id: canteen._id, name: canteen.name , status: canteen.status }
     });
 
   } catch (error) {
