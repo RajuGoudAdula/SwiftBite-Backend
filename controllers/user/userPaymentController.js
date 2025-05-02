@@ -73,33 +73,6 @@ exports.createOrder = async (req, res) => {
       newOrder.sessionId=response.data.payment_session_id;
       await newOrder.save();
       
-      await sendNotification({
-        userId: userId,
-        receiverRole: 'student',
-        title: 'Order Placed Successfully',
-        message: `Your order #${newOrder._id} has been placed. We'll notify you when it's ready.`,
-        type: 'order',
-        relatedRef: newOrder._id,
-        refModel: 'Order',
-      });
-
-      const canteenUser = await User.findOne(
-        { role: "canteen", canteen: canteenId },
-        { _id: 1 } // Only select the _id field
-      );
-      
-      await sendNotification({
-        userId: canteenUser._id, // canteen staff userId
-        canteenId: canteenId,  // optional, if you're grouping by canteen
-        receiverRole: 'canteen',
-        title: 'New Order Received',
-        message: `Order #${order._id} placed by ${user.name}. Please prepare it.`,
-        type: 'order',
-        relatedRef: newOrder._id,
-        refModel: 'Order',
-      });
-      
-      
       // Send session ID and payment details to frontend
       res.status(200).json({
         message: "Order created successfully",
@@ -107,6 +80,7 @@ exports.createOrder = async (req, res) => {
         orderData: response.data,
       });
     } catch (error) {
+      console.log(error);
       res.status(500).json({
         message: "Error creating order",
         error: error.response ? error.response.data : error.message,
@@ -120,6 +94,7 @@ exports.createOrder = async (req, res) => {
 exports.paymentWebhook = async (req, res) => {
   try {
     const { order_id } = req.body.data.order;
+    console.log(req.body.data);
     const { payment_group, cf_payment_id, payment_status, payment_amount, payment_time } = req.body.data.payment;
     const existingPayment = await Payment.findOne({ transactionId : cf_payment_id });
     if (existingPayment) return res.status(200).send("Payment already processed");
@@ -145,6 +120,36 @@ exports.paymentWebhook = async (req, res) => {
     order.paymentId = newPayment._id;
     order.paymentMethod = payment_group;
     await order.save();
+
+    await sendNotification({
+      userId: order.userId,
+      receiverRole: 'student',
+      title: 'Order Placed Successfully',
+      message: `Your order #${order_id} has been placed. We'll notify you when it's ready.`,
+      type: 'order',
+      relatedRef: order_id,
+      refModel: 'Order',
+    });
+
+    const canteenUser = await User.findOne(
+      { role: "canteen", canteen: canteenId },
+      { _id: 1 } // Only select the _id field
+    );
+
+    console.log(canteenUser);
+    
+    await sendNotification({
+      userId: canteenUser._id, // canteen staff userId
+      canteenId: canteenId,  // optional, if you're grouping by canteen
+      receiverRole: 'canteen',
+      title: 'New Order Received',
+      message: `Order #${order_id} placed by ${user?.name}. Please prepare it.`,
+      type: 'order',
+      relatedRef: order_id,
+      refModel: 'Order',
+    });
+
+
 
     res.status(200).send("OK");
   } catch (error) {
