@@ -13,19 +13,29 @@ const sendNotification = async ({
   canteenId = null,
 }) => {
   try {
-    const notification = new Notification({
-      userId,
-      message,
-      title,
-      receiverRole,
-      toAll,
-      type,
+    const existed = await Notification.findOne({
       relatedRef,
-      refModel,
-      canteenId,
+      userId,
+      receiverRole,
+      type,
     });
-
-    await notification.save();
+    
+    let notification = existed;
+    if(!existed){
+       notification = new Notification({
+        userId,
+        message,
+        title,
+        receiverRole,
+        toAll,
+        type,
+        relatedRef,
+        refModel,
+        canteenId,
+      });
+  
+      await notification.save();
+    }
 
     // Real-time emit logic
     if (toAll && receiverRole) {
