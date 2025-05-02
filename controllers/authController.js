@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const sendOTP = require('../utils/sendOTP');
+const { sendNotification } = require('../services/NotificationService');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -212,7 +213,16 @@ exports.login = async (req, res) => {
     // ✅ Generate Token
     const token = generateToken(user);
 
-   
+    await sendNotification({
+      userId: user._id, // canteen staff userId
+      canteenId: user.canteen._id,  // optional, if you're grouping by canteen
+      receiverRole: 'canteen',
+      title: 'Login Successful',
+      message: `Welcome to SwiftBite`,
+      type: 'system',
+      relatedRef: user._id,
+      refModel: 'User',
+    });
     
     res.status(200).json({
       success: true,

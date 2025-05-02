@@ -131,16 +131,13 @@ exports.paymentWebhook = async (req, res) => {
     });
 
     const canteenUser = await User.findOne(
-      { role: "canteen", canteen: canteenId },
+      { role: "canteen", canteen: order.canteenId },
       { _id: 1 } // Only select the _id field
     );
-
-    console.log("Sending notification to canteen");
-    console.log("Notification --->  ",canteenUser);
     
     await sendNotification({
-      userId: canteenUser._id, // canteen staff userId
-      canteenId: canteenId,  // optional, if you're grouping by canteen
+      userId: canteenUser?._id, // canteen staff userId
+      canteenId: order.canteenId,  // optional, if you're grouping by canteen
       receiverRole: 'canteen',
       title: 'New Order Received',
       message: `Order #${order_id} placed by ${order?.userId?.name}. Please prepare it.`,
