@@ -135,7 +135,8 @@ exports.paymentWebhook = async (req, res) => {
       { _id: 1 } // Only select the _id field
     );
 
-    console.log(canteenUser);
+    console.log("Sending notification to canteen");
+    console.log("Notification --->  ",canteenUser);
     
     await sendNotification({
       userId: canteenUser._id, // canteen staff userId
