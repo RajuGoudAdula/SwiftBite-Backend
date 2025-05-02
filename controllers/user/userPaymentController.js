@@ -94,17 +94,16 @@ exports.createOrder = async (req, res) => {
 exports.paymentWebhook = async (req, res) => {
   try {
     const { order_id } = req.body.data.order;
-    console.log(req.body.data);
     const { payment_group, cf_payment_id, payment_status, payment_amount, payment_time } = req.body.data.payment;
     const existingPayment = await Payment.findOne({ transactionId : cf_payment_id });
     if (existingPayment) return res.status(200).send("Payment already processed");
 
-    const order = await Order.findById(order_id);
+    const order = await Order.findById(order_id).populate("userId","name _id");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const newPayment = new Payment({
       orderId: order_id,
-      userId: order.userId,
+      userId: order.userId._id,
       canteenId: order.canteenId,
       paymentMethod: payment_group,
       transactionId: cf_payment_id,
@@ -143,7 +142,7 @@ exports.paymentWebhook = async (req, res) => {
       canteenId: canteenId,  // optional, if you're grouping by canteen
       receiverRole: 'canteen',
       title: 'New Order Received',
-      message: `Order #${order_id} placed by ${user?.name}. Please prepare it.`,
+      message: `Order #${order_id} placed by ${order?.userId?.name}. Please prepare it.`,
       type: 'order',
       relatedRef: order_id,
       refModel: 'Order',
