@@ -42,34 +42,7 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-// Update order status (Admin can update order status)
-exports.updateOrderStatus = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { orderStatus } = req.body;
 
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ message: "Order not found" });
-
-    order.orderStatus = orderStatus;
-    await order.save();
-
-    await sendNotification({
-      userId: order.userId,
-      receiverRole: 'student',
-      title: `Order ${order.orderStatus}`,
-      message: `Your order #${order._id} is now "${order.orderStatus}".`,
-      type: 'order',
-      relatedRef: order._id,
-      refModel: 'Order',
-    });
-    
-
-    res.status(200).json({ message: "Order status updated successfully", order });
-  } catch (error) {
-    res.status(500).json({ message: "Error updating order" });
-  }
-};
 
 exports.cancelOrder = async (req, res) => {
   try {

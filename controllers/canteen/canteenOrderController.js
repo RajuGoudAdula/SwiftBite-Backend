@@ -1,4 +1,5 @@
 const Order = require('../../models/Order');
+const { sendNotification } = require('../../services/NotificationService');
 
 exports.getOrders = async (req,res)=>{
     try {
@@ -89,6 +90,16 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: "Order not found" });
         }
 
+        await sendNotification({
+          userId: order.userId,
+          receiverRole: 'student',
+          title: `Order ${order.orderStatus}`,
+          message: `Your order #${order._id} is now "${order.orderStatus}".`,
+          type: 'order',
+          refModel: 'Order',
+        });
+
+        
         // Update the order status
         order.orderStatus = status;
         await order.save({ validateModifiedOnly: true });
