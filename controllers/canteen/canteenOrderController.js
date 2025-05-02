@@ -90,20 +90,23 @@ exports.updateOrderStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: "Order not found" });
         }
 
-        await sendNotification({
-          userId: order.userId,
-          receiverRole: 'student',
-          title: `Order ${order.orderStatus}`,
-          message: `Your order #${order._id} is now "${order.orderStatus}".`,
-          type: 'order',
-          refModel: 'Order',
-        });
 
-        
         // Update the order status
         order.orderStatus = status;
         await order.save({ validateModifiedOnly: true });
 
+        await sendNotification({
+          userId: order.userId,
+          receiverRole: 'student',
+          title: `Order ${order.orderStatus}`,
+          message: order.orderStatus === 'Completed'
+            ? `Your order #${order._id} has been completed! Enjoy your meal, and thank you for ordering with us.`
+            : `Your order #${order._id} is now "${order.orderStatus}".`,
+          type: 'order',
+          refModel: 'Order',
+          relatedRef: order._id,
+        });
+        
         res.status(200).json({ success: true, message: "Order status updated successfully", order });
     } catch (error) {
         console.error("Error updating order status:", error);
