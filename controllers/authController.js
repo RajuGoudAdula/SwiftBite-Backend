@@ -247,10 +247,13 @@ exports.login = async (req, res) => {
 // ✅ Auto-Login (After Refresh)
 exports.verifyUser = async (req, res) => {
   try {
-    const token = req.headers.authorization.split(' ')[1];
+    let token = req.headers.authorization.split(' ')[1];
+    token = token.substring(1,token.length-1);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id)
+                            .populate("college", "name") 
+                            .populate("canteen", "name status");
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -264,11 +267,12 @@ exports.verifyUser = async (req, res) => {
         email: user.email,
         username: user.username,
         role: user.role,
-        college: user.college,
-        canteen: user.canteen,
+        college: user.college || null,
+        canteen: user.canteen || null,
       }
     });
   } catch (error) {
+    console.log(error);
     res.status(401).json({ message: 'Unauthorized' });
   }
 };

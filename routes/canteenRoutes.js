@@ -4,7 +4,7 @@ const {getMenuItems,getMenuItemById,addMenuItem,updateMenuItem,deleteMenuItem} =
 const {getOrders,updateOrderStatus} = require('../controllers/canteen/canteenOrderController.js');
 const {} = require('../controllers/canteen/canteenProfileController.js');
 const {getAllReviewsForCanteen, respondToReview} = require('../controllers/canteen/canteenReviewController.js');
-const {getTodayOrders,getPendingOrders,getTotalRevenue,getPopularItem,getRecentActivity} = require('../controllers/canteen/canteenDashboardController.js');
+const {getTodayOrders,getPendingOrders,getTotalRevenue,getPopularItem,getRecentActivity, toggleCanteen, getCanteenStatus} = require('../controllers/canteen/canteenDashboardController.js');
 const { getSalesData } = require('../controllers/canteen/canteenSalesDataController.js');
 const { getUserStatistics } = require('../controllers/canteen/canteenUserDataController.js');
 const { getCanteenProductStats } = require('../controllers/canteen/canteenProductDataController.js');
@@ -33,7 +33,8 @@ router.get("/orders/pending",authMiddleware("canteen"),getPendingOrders);
 router.get("/revenue/today",authMiddleware("canteen"),getTotalRevenue);
 router.get("/menu/popular",authMiddleware("canteen"),getPopularItem);
 router.get("/orders/recent",authMiddleware("canteen"),getRecentActivity);
-
+router.put("/:canteenId/update-canteen",authMiddleware("canteen"),toggleCanteen);
+router.get("/:canteenId/canteen-status",authMiddleware("canteen"),getCanteenStatus);
 
 //Analytics Sales Data
 router.get('/:canteenId/analytics/sales-data',authMiddleware("canteen"),getSalesData)

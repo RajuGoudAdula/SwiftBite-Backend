@@ -1,7 +1,7 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
 
-const {getAllColleges,getCanteensByCollege,updateCollegeCanteen,getMenuOfCanteen,} = require('../controllers/user/userCollegeController');
+const {getAllColleges,getCanteensByCollege,updateCollegeCanteen,getMenuOfCanteen, fetchCanteenStatus,} = require('../controllers/user/userCollegeController');
 
 const {getUserCart,addToCart,updateCartItem,removeFromCart,clearCart,getItemDetails} = require('../controllers/user/userCartController');
 const { createOrder, paymentWebhook, getPaymentStatus } = require("../controllers/user/userPaymentController");
@@ -18,6 +18,7 @@ router.get('/colleges',authMiddleware("user"),getAllColleges);
 router.get('/colleges/:collegeId/canteens',authMiddleware("user"),getCanteensByCollege);
 router.put('/update-college-canteen/:userId',authMiddleware("user"),updateCollegeCanteen);
 router.get('/:canteenId/menu',authMiddleware("user"),getMenuOfCanteen);
+router.get('/fetch-canteen-status/:canteenId',authMiddleware("user"),fetchCanteenStatus);
 
 
 router.get('/cart/fetch-cart/:userId',authMiddleware("user"),getUserCart);

@@ -13,6 +13,32 @@ const sendNotification = async ({
   canteenId = null,
 }) => {
   try {
+
+        if(Array.isArray(userId)){
+          userId.map( async (userId) => {
+
+            const notification = new Notification({
+              userId,
+              message,
+              title,
+              receiverRole,
+              toAll,
+              type,
+              relatedRef,
+              refModel,
+              canteenId,
+            });
+        
+            const res = await notification.save();
+            
+            if (userId && global.connectedUsers?.[userId]) {
+              const socketId = global.connectedUsers[userId];
+              global.io.to(socketId).emit('new_notification', notification);
+            }
+
+          })
+          return;
+        }
        const notification = new Notification({
         userId,
         message,

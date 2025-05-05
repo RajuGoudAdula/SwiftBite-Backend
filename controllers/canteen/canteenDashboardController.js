@@ -3,6 +3,9 @@ const CanteenMenuItem = require('../../models/CanteenMenuItem');
 const Product = require('../../models/Product');
 const moment = require('moment');
 const mongoose = require('mongoose'); // at the top of your file
+const Canteen = require('../../models/Canteen');
+const User = require('../../models/User');
+const { sendNotification } = require('../../services/NotificationService');
 
 // 1. Today's Orders
 exports.getTodayOrders = async (req, res) => {
@@ -135,3 +138,69 @@ exports.getRecentActivity = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+exports.toggleCanteen = async (req, res) => {
+  try {
+    const { canteenId } = req.params;
+
+    if (!canteenId) {
+      return res.status(400).json({ message: "Canteen ID is required." });
+    }
+
+    const canteen = await Canteen.findById(canteenId).populate('collegeId','name');
+
+    if (!canteen) {
+      return res.status(404).json({ message: "Canteen not found." });
+    }
+
+    // Toggle status
+    const newStatus = canteen.status === "active" ? "inactive" : "active";
+    canteen.status = newStatus;
+    await canteen.save();
+    const users = await User.find({ canteen : canteenId }).select('_id');
+    const userIds = users.map(user => user._id);
+    await sendNotification({
+      userId: userIds, // or use the admin/owner user ID if available
+      receiverRole: 'student', // or 'all', depending on who should be notified
+      title: canteen.status === 'inactive'
+      ? `Canteen is Now Closed.`
+      : `Canteen is Now Open!`,
+      message: canteen.status === 'inactive'
+        ? `The canteen at ${canteen?.name}, ${canteen?.collegeId?.name}, is now closed. Thank you for your orders today—we'll be serving again soon!`
+        : `The canteen at ${canteen?.name}, ${canteen?.collegeId?.name}, is now open. You're welcome to place your order right away and enjoy your favorite meals!`,
+      type: 'canteen',
+      refModel: 'Canteen',
+      relatedRef: canteen._id,
+    });
+    
+    res.status(200).json({
+      message: `Canteen is now ${newStatus}.`,
+      status: newStatus
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getCanteenStatus = async (req,res) => {
+  try{
+    const {canteenId} = req.params;
+    if (!canteenId) {
+      return res.status(400).json({ message: "Canteen ID is required." });
+    }
+
+    const canteen = await Canteen.findById(canteenId);
+
+    if (!canteen) {
+      return res.status(404).json({ message: "Canteen not found." });
+    }
+    res.status(200).json({
+      status: canteen.status,
+    });
+
+  }catch(error){
+    res.status(500).json({ message: err.message });
+  }
+}

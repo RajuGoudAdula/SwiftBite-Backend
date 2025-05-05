@@ -7,7 +7,7 @@ const notificationSchema = new mongoose.Schema({
   
   title: { type: String },
   message: { type: String, required: true },
-  type: { type: String, enum: ['order', 'system', 'promo'], default: 'system' },
+  type: { type: String, enum: ['order', 'system', 'promo','canteen'], default: 'system' },
   isRead: { type: Boolean, default: false },
 
   relatedRef: { type: mongoose.Schema.Types.ObjectId },

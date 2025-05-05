@@ -99,3 +99,28 @@ exports.updateCollegeCanteen = async (req, res) => {
 };
 
 
+exports.fetchCanteenStatus = async (req,res) => {
+  try{
+    const {canteenId} = req.params;
+   if(!canteenId){
+      return res.status(404).json({ success: false, message: 'Canteen required' });
+    }
+    const canteen = await Canteen.findById(canteenId);
+    if(!canteen){
+      return res.status(404).json({ success: false, message: 'Canteen not found' });
+    }
+    return res.json({
+      success : true,
+      status : canteen.status,
+      message : "Canteen Status",
+    })
+
+
+  }catch(error){
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong while fetching canteen status.',
+      error: error.message
+    });
+  }
+}
