@@ -12,8 +12,7 @@ function setupSocket(server) {
   });
 
   io.on("connection", (socket) => {
-    console.log("A user connected", socket.id);
-
+   
     socket.on("register", ({ userId, role }) => {
       if (userId) {
         // If user is not in the connectedUsers, create an empty array
@@ -26,7 +25,6 @@ function setupSocket(server) {
         // Optionally store user details (like role)
         userDetails[userId] = { role };
         
-        console.log(`User ${userId} connected from socket ${socket.id}`);
       }
     });
 
@@ -36,7 +34,6 @@ function setupSocket(server) {
         const index = connectedUsers[userId].indexOf(socket.id);
         if (index !== -1) {
           connectedUsers[userId].splice(index, 1); // Remove the socket ID
-          console.log(`User ${userId} disconnected from socket ${socket.id}`);
           break;
         }
       }
@@ -51,7 +48,7 @@ function setupSocket(server) {
         io.to(socketId).emit("notification", message); // Send notification to each socket ID
       });
     } else {
-      console.log(`User ${userId} is not connected`);
+      // console.log(`User ${userId} is not connected`);
     }
   };
 
