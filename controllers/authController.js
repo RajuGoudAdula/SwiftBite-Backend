@@ -1,9 +1,11 @@
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const sendOTP = require('../utils/sendOTP');
 const { sendNotification } = require('../services/NotificationService');
+
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -21,18 +23,16 @@ const generateToken = (user) => {
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
-    console.log("🔐 Received token:", token);
+
+    console.log(process.env.GOOGLE_CLIENT_ID);
 
     const ticket = await client.verifyIdToken({
       idToken: token,
-      audience: "994958748375-d0saihca1d65bu4l37fukgn74ngtivff.apps.googleusercontent.com",
+      audience: process.env.GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
-    console.log("📦 Google Token Payload:", payload);
-    console.log("🎯 Payload audience (aud):", payload.aud);
-    console.log("✅ Backend expected audience:", process.env.GOOGLE_CLIENT_ID);
-
+   
     const { email, name, sub: googleId, picture } = payload;
 
     if (!email) {
