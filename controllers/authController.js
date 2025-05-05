@@ -22,36 +22,34 @@ exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
 
-    // Verify Google token
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
-    const { email, name, sub: googleId, picture } = ticket.getPayload(); // `sub` is Google ID
+    const { email, name, sub: googleId, picture } = ticket.getPayload();
 
-    // Check if user already exists
-    let user = await User.findOne({ email });
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email not available from Google" });
+    }
+
+    let user = await User.findOne({ email })
+      .populate("college", "name")
+      .populate("canteen", "name");
 
     if (!user) {
-      // Create a new user if not found
       user = new User({
         name,
         email,
-        googleId, // ✅ Store Google ID
-        isVerified: true, // ✅ Google users are verified by default
-        role: "user", // Default role for new users
+        googleId,
+        isVerified: true,
+        role: "user",
+        // profileImage: picture, // Optional
       });
 
       await user.save();
-    } else {
-      // Populate college & canteen only for existing users
-      user = await User.findOne({ email })
-        .populate("college", "name")
-        .populate("canteen", "name");
     }
 
-    // Generate JWT token
     const jwtToken = generateToken(user);
 
     res.json({
@@ -60,10 +58,10 @@ exports.googleLogin = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        username:  user.name, // Use name if username is missing
+        username: user.name,
         role: user.role,
-        college: user.college || null, // Ensure `null` if not set
-        canteen: user.canteen || null, // Ensure `null` if not set
+        college: user.college || null,
+        canteen: user.canteen || null,
       },
       token: jwtToken,
     });
@@ -72,6 +70,7 @@ exports.googleLogin = async (req, res) => {
     res.status(500).json({ success: false, message: "Google login failed" });
   }
 };
+
 
 
 exports.sendotp = async (req, res) => {
