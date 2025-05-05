@@ -1,6 +1,5 @@
 const Notification = require('../models/Notification');
 
-
 const sendNotification = async ({
   userId,
   message,
@@ -13,59 +12,68 @@ const sendNotification = async ({
   canteenId = null,
 }) => {
   try {
+    // If userId is an array, process each userId
+    if (Array.isArray(userId)) {
+      userId.forEach(async (uid) => {
+        const notification = new Notification({
+          userId: uid,
+          message,
+          title,
+          receiverRole,
+          toAll,
+          type,
+          relatedRef,
+          refModel,
+          canteenId,
+        });
 
-        if(Array.isArray(userId)){
-          userId.map( async (userId) => {
+        // Save the notification to the database
+        const res = await notification.save();
 
-            const notification = new Notification({
-              userId,
-              message,
-              title,
-              receiverRole,
-              toAll,
-              type,
-              relatedRef,
-              refModel,
-              canteenId,
-            });
-        
-            const res = await notification.save();
-            
-            if (userId && global.connectedUsers?.[userId]) {
-              const socketId = global.connectedUsers[userId];
-              global.io.to(socketId).emit('new_notification', notification);
-            }
-
-          })
-          return;
+        // Real-time emit logic for each user
+        if (global.connectedUsers?.[uid]) {
+          const socketIds = global.connectedUsers[uid]; // List of socket IDs for the user
+          socketIds.forEach((socketId) => {
+            global.io.to(socketId).emit('new_notification', notification);
+          });
         }
-       const notification = new Notification({
-        userId,
-        message,
-        title,
-        receiverRole,
-        toAll,
-        type,
-        relatedRef,
-        refModel,
-        canteenId,
       });
-  
-      await notification.save();
-    
+      return;
+    }
+
+    // If userId is not an array, process a single userId
+    const notification = new Notification({
+      userId,
+      message,
+      title,
+      receiverRole,
+      toAll,
+      type,
+      relatedRef,
+      refModel,
+      canteenId,
+    });
+
+    // Save the notification to the database
+    await notification.save();
 
     // Real-time emit logic
     if (toAll && receiverRole) {
       // Broadcast to all connected users of a specific role
-      for (let [uid, socketId] of Object.entries(global.connectedUsers || {})) {
+      for (let [uid, socketIds] of Object.entries(global.connectedUsers || {})) {
         const userInfo = global.userDetails?.[uid];
         if (userInfo?.role === receiverRole) {
-          global.io.to(socketId).emit('new_notification', notification);
+          socketIds.forEach((socketId) => {
+            global.io.to(socketId).emit('new_notification', notification);
+          });
         }
       }
     } else if (userId && global.connectedUsers?.[userId]) {
-      const socketId = global.connectedUsers[userId];
-      global.io.to(socketId).emit('new_notification', notification);
+      // Send to the specific user if they are connected
+      const socketIds = global.connectedUsers[userId];
+      socketIds.forEach((socketId) => {
+        global.io.to(socketId).emit('new_notification', notification);
+      });
     }
 
   } catch (error) {
@@ -73,9 +81,9 @@ const sendNotification = async ({
   }
 };
 
-const sendUsersAllNotifications = async (req,res) => {
-  try{
-    const {userId} = req.params;
+const sendUsersAllNotifications = async (req, res) => {
+  try {
+    const { userId } = req.params;
     const allUserNotifications = await Notification.find({
       userId: userId
     }).sort({ createdAt: -1 });
@@ -85,12 +93,11 @@ const sendUsersAllNotifications = async (req,res) => {
     }
 
     res.status(200).json({ message: 'All notifications', notifications: allUserNotifications });
-   
-  }catch(error){
-    res.status(500).json({ message: 'Error fetching all notifications', error: error.message });
 
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching all notifications', error: error.message });
   }
-}
+};
 
 // Mark a single notification as read
 const markNotificationAsRead = async (req, res) => {
@@ -146,4 +153,10 @@ const deleteAllNotifications = async (req, res) => {
   }
 };
 
-module.exports = {sendNotification,sendUsersAllNotifications , markNotificationAsRead,deleteAllNotifications,deleteNotification};
+module.exports = {
+  sendNotification,
+  sendUsersAllNotifications,
+  markNotificationAsRead,
+  deleteAllNotifications,
+  deleteNotification
+};
