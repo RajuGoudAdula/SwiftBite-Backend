@@ -21,13 +21,19 @@ const generateToken = (user) => {
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
+    console.log("🔐 Received token:", token);
 
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
-    const { email, name, sub: googleId, picture } = ticket.getPayload();
+    const payload = ticket.getPayload();
+    console.log("📦 Google Token Payload:", payload);
+    console.log("🎯 Payload audience (aud):", payload.aud);
+    console.log("✅ Backend expected audience:", process.env.GOOGLE_CLIENT_ID);
+
+    const { email, name, sub: googleId, picture } = payload;
 
     if (!email) {
       return res.status(400).json({ success: false, message: "Email not available from Google" });
@@ -44,7 +50,7 @@ exports.googleLogin = async (req, res) => {
         googleId,
         isVerified: true,
         role: "user",
-        // profileImage: picture, // Optional
+        // profileImage: picture,
       });
 
       await user.save();
@@ -66,10 +72,11 @@ exports.googleLogin = async (req, res) => {
       token: jwtToken,
     });
   } catch (error) {
-    console.error("Google Login Error:", error);
+    console.error("❌ Google Login Error:", error.message);
     res.status(500).json({ success: false, message: "Google login failed" });
   }
 };
+
 
 
 
