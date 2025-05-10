@@ -10,6 +10,7 @@ const {getProfile,sendEmailOtp,verifyEmailOtp , verifyPassword,updatePassword,up
 const {addReview,updateReview,deleteReview,getUserReview,likeReview,disLikeReview} = require('../controllers/user/userReviewController');
 const { fetchPopularItems, debouncedSearch } = require('../controllers/user/userSearchController');
 const {addFavouriteItem,removeFavouriteItem,getFavouriteItems} = require('../controllers/user/userFavouriteItemsController');
+const { submitContactForm } = require('../controllers/user/userContactFormController');
 
 
 const router = express.Router();
@@ -60,4 +61,6 @@ router.get('/menu/search',debouncedSearch);
 router.post('/add-favourite-item/:userId/:canteenId',authMiddleware("user"),addFavouriteItem);
 router.delete('/remove-favourite-item/:userId/:canteenId/:itemId',authMiddleware("user"),removeFavouriteItem);
 router.get('/fetch-favourite-items/:userId',authMiddleware("user"),getFavouriteItems);
+
+router.post('/:userId/contact-message',authMiddleware("user"),submitContactForm)
 module.exports = router;

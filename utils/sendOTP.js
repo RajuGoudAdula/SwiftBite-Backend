@@ -74,4 +74,37 @@ const sendOTP = async (email, otp, type) => {
   }
 };
 
-module.exports = sendOTP;
+const sendContactMessageEmail = async (data) => {
+  const { name, role, email, subject, message ,userId} = data;
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px; background: #f9f9f9; max-width: 600px;">
+      <h2>📩 New Contact Form Message</h2>
+      <p><strong>UserId:</strong> ${userId}</p>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Role:</strong> ${role}</p>
+      <p><strong>Subject:</strong> ${subject}</p>
+      <p><strong>Message:</strong></p>
+      <blockquote style="background: #fff; padding: 15px; border-left: 5px solid #007bff;">${message}</blockquote>
+      <p style="font-size: 12px; color: #666;">Sent automatically by SwiftBite Contact Support.</p>
+    </div>
+  `;
+
+  const mailOptions = {
+    from: `"SwiftBite Contact" <${process.env.EMAIL_USER}>`,
+    to: process.env.ADMIN_EMAIL, // define this in your `.env`
+    subject: `New Contact Message from ${name} [${role}]`,
+    html: htmlContent,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true, message: "Message sent to admin successfully" };
+  } catch (error) {
+    return { success: false, message: "Failed to send message", error: error.message };
+  }
+};
+
+
+module.exports = {sendOTP , sendContactMessageEmail};
