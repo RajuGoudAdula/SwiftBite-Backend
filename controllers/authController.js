@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
-const sendOTP = require('../utils/sendOTP');
+const {sendOTP} = require('../utils/sendOTP');
 const { sendNotification } = require('../services/NotificationService');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -78,6 +78,7 @@ exports.googleLogin = async (req, res) => {
 
 exports.sendotp = async (req, res) => {
   try {
+    console.log(req.body);
     const { email } = req.body;
 
     if (!email) {
@@ -115,6 +116,8 @@ exports.sendotp = async (req, res) => {
 
     res.status(200).json({ success: true, message: 'OTP sent successfully to your email' });
   } catch (error) {
+    console.log(error);
+    
     res.status(500).json({ message: 'Failed to send OTP', error: error.message });
   }
 };
@@ -200,10 +203,15 @@ exports.login = async (req, res) => {
     // ✅ Find User
     const user = await User.findOne({ email })
                 .populate("college", "name") 
-                .populate("canteen", "name status"); 
+                .populate("canteen", "name status _id"); 
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+
+    if(password && user?.googleId){
+      return res.status(403).json({message : 'You signed in with Google. Use Google to log in.'});
     }
 
     // ✅ Verify Password
@@ -215,14 +223,16 @@ exports.login = async (req, res) => {
     // ✅ Generate Token
     const token = generateToken(user);
 
+    console.log(user);
+
     await sendNotification({
-      userId: user._id, // canteen staff userId
-      canteenId: user.canteen._id,  // optional, if you're grouping by canteen
+      userId: user?._id, // canteen staff userId
+      canteenId: user?.canteen?._id,  // optional, if you're grouping by canteen
       receiverRole: 'canteen',
       title: 'Login Successful',
       message: `Welcome to SwiftBite`,
       type: 'system',
-      relatedRef: user._id,
+      relatedRef: user?._id,
       refModel: 'User',
     });
     
@@ -240,6 +250,7 @@ exports.login = async (req, res) => {
       token
     });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: 'Login failed' });
   }
 };

@@ -5,6 +5,7 @@ const Payment = require("../../models/Payment");
 const User = require("../../models/User");
 const { Cashfree } = require("cashfree-pg");
 const { sendNotification } = require("../../services/NotificationService");
+const CanteenMenuItem = require("../../models/CanteenMenuItem");
 
 // Configure Cashfree
 Cashfree.XClientId = process.env.CASHFREE_APP_ID;
@@ -33,6 +34,7 @@ exports.createOrder = async (req, res) => {
         totalPrice: item.totalPrice,
         offers : item.itemId.offers,
       }));
+
   
       // Create a new order with sessionId
       const newOrder = new Order({
@@ -72,6 +74,20 @@ exports.createOrder = async (req, res) => {
      
       newOrder.sessionId=response.data.payment_session_id;
       await newOrder.save();
+
+      for (const item of cartItems) {
+        if (item?.itemId?._id) {
+          const canteenMenuItem = await CanteenMenuItem.findById(item.itemId._id);
+          
+          if (canteenMenuItem) {
+            canteenMenuItem.stock -= item.quantity;
+            if(canteenMenuItem.stock === 0){
+              canteenMenuItem.isAvailable = false;
+            }
+            await canteenMenuItem.save();
+          }
+        }
+      }      
       
       // Send session ID and payment details to frontend
       res.status(200).json({

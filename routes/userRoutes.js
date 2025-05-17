@@ -3,7 +3,7 @@ const authMiddleware = require('../middleware/auth');
 
 const {getAllColleges,getCanteensByCollege,updateCollegeCanteen,getMenuOfCanteen, fetchCanteenStatus,} = require('../controllers/user/userCollegeController');
 
-const {getUserCart,addToCart,updateCartItem,removeFromCart,clearCart,getItemDetails} = require('../controllers/user/userCartController');
+const {getUserCart,addToCart,updateCartItem,removeFromCart,clearCart,getItemDetails, checkStock} = require('../controllers/user/userCartController');
 const { createOrder, paymentWebhook, getPaymentStatus } = require("../controllers/user/userPaymentController");
 const {getUserOrders,cancelOrder} = require('../controllers/user/userOrderController');
 const {getProfile,sendEmailOtp,verifyEmailOtp , verifyPassword,updatePassword,updateUsername} =require('../controllers/user/userProfileController');
@@ -26,6 +26,7 @@ router.get('/cart/fetch-cart/:userId',authMiddleware("user"),getUserCart);
 router.post('/cart/add-to-cart/:userId',authMiddleware("user"),addToCart);
 router.put('/cart/update-quantity/:userId',authMiddleware("user"),updateCartItem);
 router.delete('/cart/remove-item/:userId/:itemId',authMiddleware("user"),removeFromCart);
+router.get('/cart/check-stock/:userId',authMiddleware("user"),checkStock);
 
 router.get('/get-item-details/:itemId',authMiddleware("user"),getItemDetails);
 router.post('/like-review/:itemId/:reviewId',authMiddleware("user"),likeReview);

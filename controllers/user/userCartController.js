@@ -15,7 +15,7 @@ exports.getUserCart = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const userCanteenId = user.canteen?.toString();
+    const userCanteenId = user?.canteen;
     if (!userCanteenId) {
       return res.status(400).json({ message: "User has no canteen assigned" });
     }
@@ -28,12 +28,12 @@ exports.getUserCart = async (req, res) => {
                             })
                             .populate({
                               path: "items.itemId",
-                              select: "price offers"
+                              select: "price offers stock"
                             });
-
+                    
     // 3. Check canteen match
     if (cart) {
-      if (cart.canteenId.toString() === userCanteenId) {
+      if (cart.canteenId.toString() === userCanteenId.toString()) {
         
         return res.status(200).json({
           cart: cart,
@@ -71,6 +71,7 @@ exports.addToCart = async (req, res) => {
     try {
       const { itemId, quantity } = req.body;
       const { userId } = req.params;
+      
       const canteenMenuItem = await CanteenMenuItem.findById(itemId);
                       
       if (!canteenMenuItem) return res.status(404).json({ message: "Item not found" });
@@ -83,7 +84,8 @@ exports.addToCart = async (req, res) => {
         return res.status(400).json({ message: "Item is not available" });
       }
   
-      let cart = await Cart.findOne({ userId });
+      let cart = await Cart.findOne({ userId , canteenId :canteenMenuItem?.canteenId });
+
   
       if (!cart) {
         cart = new Cart({
@@ -92,8 +94,6 @@ exports.addToCart = async (req, res) => {
           items: [],
           totalAmount: 0,
         });
-      } else if (cart.canteenId.toString() !== canteenMenuItem.canteenId.toString()) {
-        return res.status(400).json({ message: "Cannot add items from different canteens" });
       }
   
       const existingItem = cart.items.find(
@@ -124,6 +124,7 @@ exports.addToCart = async (req, res) => {
   
       cart.totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
       await cart.save();
+
       const populatedCart = await Cart.findById(cart._id)
       .populate({
         path: "items.productId",
@@ -136,6 +137,7 @@ exports.addToCart = async (req, res) => {
 
       res.status(200).json({ message: "Item added to cart", cart : populatedCart });
     } catch (error) {
+      console.log(error);
       res.status(500).json({ message: "Error adding to cart", error });
     }
   };
@@ -263,24 +265,66 @@ exports.getItemDetails = async (req, res) => {
       },
       reviews: reviews
         ? reviews.reviews.map((review) => ({
-            _id: review._id,
+            _id: review?._id,
             user: {
-              _id: review.userId._id,
-              name: review.isAnonymous ? "Anonymous" : review.userId.name,
+              _id: review?.userId?._id,
+              name: review?.isAnonymous ? "Anonymous" : review?.userId?.name,
             },
-            rating: review.rating,
-            review: review.review,
-            images: review.images,
-            likes: review.likes.length,
-            dislikes: review.dislikes.length,
-            canteenResponse: review.canteenResponse,
-            createdAt: review.createdAt,
+            rating: review?.rating,
+            review: review?.review,
+            images: review?.images,
+            likes: review?.likes?.length,
+            dislikes: review?.dislikes?.length,
+            canteenResponse: review?.canteenResponse,
+            createdAt: review?.createdAt,
           }))
         : [],
     };
 
     res.status(200).json(responseData);
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Error getting item details", error });
+  }
+};
+
+
+exports.checkStock = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: "items.productId",
+        select: "name"
+      })
+      .populate({
+        path: "items.itemId",
+        select: "stock"
+      });
+    if(!cart){
+      res.status(400).json({message : "No cart is found"});
+    }
+
+    const stockWarnings = [];
+
+    for (const item of cart?.items || []) {
+      if (item?.itemId?.stock < item?.quantity) {
+        stockWarnings.push(
+          `Just ${item?.itemId?.stock} "${item?.productId?.name}" available. Please adjust.`
+        );
+      }
+    }
+
+    if (stockWarnings.length > 0) {
+      return res.status(200).json({
+        messages: stockWarnings
+      });
+    }
+
+    res.status(200).json({ message: "All items are in stock.Please click again to place an order." });
+
+  } catch (error) {
+    res.status(500).json({ message: "Error while checking stocks of items", error: error.message });
   }
 };
