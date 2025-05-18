@@ -11,6 +11,7 @@ const {addReview,updateReview,deleteReview,getUserReview,likeReview,disLikeRevie
 const { fetchPopularItems, debouncedSearch } = require('../controllers/user/userSearchController');
 const {addFavouriteItem,removeFavouriteItem,getFavouriteItems} = require('../controllers/user/userFavouriteItemsController');
 const { submitContactForm } = require('../controllers/user/userContactFormController');
+const { getHeroBanners } = require('../controllers/user/userHeroBannerController');
 
 
 const router = express.Router();
@@ -63,5 +64,7 @@ router.post('/add-favourite-item/:userId/:canteenId',authMiddleware("user"),addF
 router.delete('/remove-favourite-item/:userId/:canteenId/:itemId',authMiddleware("user"),removeFavouriteItem);
 router.get('/fetch-favourite-items/:userId',authMiddleware("user"),getFavouriteItems);
 
-router.post('/:userId/contact-message',authMiddleware("user"),submitContactForm)
+router.post('/:userId/contact-message',authMiddleware("user"),submitContactForm);
+
+router.get('/get-herobanners/:userId/:canteenId',authMiddleware("user"),getHeroBanners);
 module.exports = router;

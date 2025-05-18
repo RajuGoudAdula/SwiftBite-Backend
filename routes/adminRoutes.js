@@ -9,31 +9,39 @@ const {} = require('../controllers/admin/adminProfileController.js');
 const {} = require('../controllers/admin/adminReviewController.js');
 const {} = require('../controllers/admin/adminUserController.js');
 const {getAllProducts,getProductById,addProduct,updateProduct,deleteProduct} = require('../controllers/admin/adminProductsController.js');
+const { getAllBanners, updateBanner, deleteBanner, addHeroBanner, fetchCanteens } = require('../controllers/admin/adminBannerController.js');
 
 
-const authMiddleware = require('../middleware/auth.js')
+const authMiddleware = require('../middleware/auth.js');
 const router = express.Router();
 
 //For colleges
 router.get('/colleges',getAllColleges);
-router.post('/colleges',createCollege);
-router.put('/colleges/:collegeId',updateCollege);
-router.delete('/colleges/:collegeId',deleteCollege);
+router.post('/colleges',authMiddleware("admin"),createCollege);
+router.put('/colleges/:collegeId',authMiddleware("admin"),updateCollege);
+router.delete('/colleges/:collegeId',authMiddleware("admin"),deleteCollege);
 
 
 
 //For canteens
-router.post('/colleges/:collegeId/canteens',createCanteen);
+router.post('/colleges/:collegeId/canteens',authMiddleware("admin"),createCanteen);
 router.get('/colleges/:collegeId/canteens',getCanteensByCollege);
-router.put('/colleges/:collegeId/canteens/:canteenId',updateCanteen);
-router.delete('/colleges/:collegeId/canteens/:canteenId',deleteCanteen);
+router.put('/colleges/:collegeId/canteens/:canteenId',authMiddleware("admin"),updateCanteen);
+router.delete('/colleges/:collegeId/canteens/:canteenId',authMiddleware("admin"),deleteCanteen);
 
 
 //For Products
 router.get('/products',getAllProducts);
-router.get('/products/:productId',getProductById);
-router.post('/products/new-product',addProduct);
-router.put('/products/:productId',updateProduct);
-router.delete('/products/:productId',deleteProduct);
+router.get('/products/:productId',authMiddleware("admin"),getProductById);
+router.post('/products/new-product',authMiddleware("admin"),addProduct);
+router.put('/products/:productId',authMiddleware("admin"),updateProduct);
+router.delete('/products/:productId',authMiddleware("admin"),deleteProduct);
+
+//Banners
+router.get('/banners',getAllBanners);
+router.put('/update-banner/:bannerId',authMiddleware("admin"),updateBanner);
+router.post('/post-banner',authMiddleware("admin"),addHeroBanner);
+router.delete('/delete-banner/:bannerId',authMiddleware("admin"),deleteBanner);
+router.get('/fetchCanteens',authMiddleware("admin"),fetchCanteens);
 
 module.exports = router;
