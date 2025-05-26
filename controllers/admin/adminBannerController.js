@@ -97,7 +97,7 @@ const updateBanner = async (req, res) => {
     displayRules,
     createdBy,
   } = req.body;
-  console.log(req.body);
+
 
   try {
     const banner = await Banner.findById(bannerId);

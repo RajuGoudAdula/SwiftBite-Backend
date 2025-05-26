@@ -6,6 +6,7 @@ const mongoose = require('mongoose'); // at the top of your file
 const Canteen = require('../../models/Canteen');
 const User = require('../../models/User');
 const { sendNotification } = require('../../services/NotificationService');
+const HeroBanner = require('../../models/HeroBanner');
 
 // 1. Today's Orders
 exports.getTodayOrders = async (req, res) => {
@@ -110,7 +111,6 @@ exports.getPopularItem = async (req, res) => {
           },
         },
       ]);
-      console.log(arr);
       if (agg.length > 0) {
         res.status(200).json(agg[0]);
       } else {
@@ -173,6 +173,29 @@ exports.toggleCanteen = async (req, res) => {
       refModel: 'Canteen',
       relatedRef: canteen._id,
     });
+
+    if (newStatus === 'inactive' || newStatus === 'active') {
+      const bannerTitle = 'Canteen is Closed';
+    
+      const banner = await HeroBanner.findOne({ title: bannerTitle });
+      console.log("Canteeen Bannererrr");
+      console.log(banner);
+      if (banner) {
+        const index = banner.targetCanteens.findIndex(id => id.toString() === canteenId.toString());
+        console.log(index);
+        if (newStatus === 'inactive' && index === -1) {
+          // Add canteenId if not present
+          banner.targetCanteens.push(canteenId);
+          await banner.save();
+        } else if (newStatus === 'active' && index !== -1) {
+          // Remove canteenId if it exists
+          banner.targetCanteens.splice(index, 1);
+          await banner.save();
+        }
+        // console.log(banner);
+      }
+    }
+    
     
     res.status(200).json({
       message: `Canteen is now ${newStatus}.`,

@@ -39,8 +39,8 @@ const heroBannerSchema = new mongoose.Schema({
   // Targeting
   personalizationTags: {
     type: [String],
-    enum: ['all', 'new_users', 'frequent_buyers', 'admin', 'mobile_users'],
-    default: ['all'],
+    enum: ['all', 'new_users', 'frequent_buyers', 'admin', 'mobile_users',''],
+    default: [],
   },
 
   targetCanteens: {

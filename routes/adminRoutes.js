@@ -2,7 +2,7 @@ const express = require('express');
 
 const {getCanteensByCollege,deleteCanteen,updateCanteen,createCanteen} = require('../controllers/admin/adminCanteenController.js');
 const {getAllColleges,deleteCollege,createCollege,updateCollege} = require('../controllers/admin/adminCollegeController.js');
-const {} = require('../controllers/admin/adminDashboardController.js');
+const { getAdminStats, getRecentActivity, getTodaysOrders } = require('../controllers/admin/adminDashboardController.js');
 const {} = require('../controllers/admin/adminOrderController.js');
 const {} = require('../controllers/admin/adminPaymentController.js');
 const {} = require('../controllers/admin/adminProfileController.js');
@@ -43,5 +43,10 @@ router.put('/update-banner/:bannerId',authMiddleware("admin"),updateBanner);
 router.post('/post-banner',authMiddleware("admin"),addHeroBanner);
 router.delete('/delete-banner/:bannerId',authMiddleware("admin"),deleteBanner);
 router.get('/fetchCanteens',authMiddleware("admin"),fetchCanteens);
+
+//Dashboard
+router.get('/get-stats/:userId',authMiddleware("admin"),getAdminStats);
+router.get('/get-activity/:userId',authMiddleware("admin"),getRecentActivity);
+router.get('/get-todays-orders',authMiddleware("admin"),getTodaysOrders);
 
 module.exports = router;
