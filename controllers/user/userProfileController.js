@@ -1,7 +1,7 @@
 const { json } = require('body-parser');
 const bcrypt = require("bcryptjs");
 const User = require('../../models/User');
-const sendOTP = require('../../utils/sendOTP');
+const {sendOTP} = require('../../utils/sendOTP');
 
 // ✅ Get User Profile (Excluding Sensitive Data)
 exports.getProfile = async (req, res) => {
@@ -88,7 +88,7 @@ exports.verifyOTP = async (req, res) => {
 
 exports.sendEmailOtp = async (req,res) => {
   const {userId} =req.params;
- const {email} = req.body;
+  const {email} = req.body;
  console.log(req.body,userId);
  try {
   if (!email) {
@@ -122,6 +122,7 @@ exports.sendEmailOtp = async (req,res) => {
   }
 
  }catch(error){
+  console.log(error);
   res.status(500).json({ message: 'Failed to send email OTP' });
  }
 };

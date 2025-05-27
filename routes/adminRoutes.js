@@ -10,6 +10,7 @@ const {} = require('../controllers/admin/adminReviewController.js');
 const {  deleteUserByAdmin, getAllUsersForAdmin } = require('../controllers/admin/adminUserController.js');
 const {getAllProducts,getProductById,addProduct,updateProduct,deleteProduct} = require('../controllers/admin/adminProductsController.js');
 const { getAllBanners, updateBanner, deleteBanner, addHeroBanner, fetchCanteens } = require('../controllers/admin/adminBannerController.js');
+const { getAllFeedbacks, sendFeedbackResponse } = require('../controllers/admin/adminFeedbackController.js');
 
 
 const authMiddleware = require('../middleware/auth.js');
@@ -52,5 +53,9 @@ router.get('/get-todays-orders',authMiddleware("admin"),getTodaysOrders);
 //User management
 router.get('/get-all-users',authMiddleware("admin"),getAllUsersForAdmin);
 router.delete('/delete/user/:userId',authMiddleware("admin"),deleteUserByAdmin);
+
+//Feedbacks
+router.get('/get-feedbacks',authMiddleware("admin"),getAllFeedbacks);
+router.put('/send-feedback/:feedbackId',authMiddleware("admin"),sendFeedbackResponse);
 
 module.exports = router;

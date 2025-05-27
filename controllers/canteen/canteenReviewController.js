@@ -2,6 +2,7 @@ const Reviews = require("../../models/Review");
 const Orders = require("../../models/Order");
 const User = require("../../models/User");
 const Product = require("../../models/Product");
+const Feedback = require("../../models/Feedback");
 
 
 
@@ -188,3 +189,18 @@ exports.deleteReview = async (req, res) => {
   }
 };
 
+exports.getCanteenFeedbacks = async (req, res) => {
+  const { canteenId } = req.params;
+
+  try {
+    const feedbacks = await Feedback.find({
+      canteenId,
+      canteenResponseAdmin: { $ne: '' } 
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json(feedbacks);
+  } catch (err) {
+    console.error('Error fetching canteen feedbacks:', err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};

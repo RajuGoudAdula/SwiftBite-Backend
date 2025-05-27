@@ -1,5 +1,6 @@
 const Review = require("../../models/Review");
 const Canteen = require('../../models/Canteen');
+const Feedback = require("../../models/Feedback");
 
 exports.addReview = async (req, res) => {
   try {
@@ -230,7 +231,10 @@ exports.likeReview = async (req, res) => {
       message: "Review like updated successfully",
       likes: review.likes.length,
       dislikes: review.dislikes.length,
+      userLiked: likeIndex === -1, 
+      userDisliked: false
     });
+    
 
   } catch (error) {
     return res.status(500).json({ message: "Error while liking review" });
@@ -279,9 +283,46 @@ exports.disLikeReview = async (req, res) => {
       message: "Review dislike updated successfully",
       likes: review.likes.length,
       dislikes: review.dislikes.length,
+      userLiked: false,
+      userDisliked: dislikeIndex === -1, 
     });
+    
 
   } catch (error) {
     return res.status(500).json({ message: "Error while disliking review" });
+  }
+};
+
+
+
+// Controller to handle feedback submission
+exports.sendCanteenFeedback = async (req, res) => {
+  const { userId, canteenId } = req.params;
+  const { userName, email, canteenName, subject, message } = req.body;
+
+  if (!userName || !email || !canteenName || !subject || !message) {
+    return res.status(400).json({ success: false, message: 'All fields are required.' });
+  }
+
+  try {
+    // Create new feedback document
+    const newFeedback = new Feedback({
+      userId,
+      userName,
+      email,
+      canteenId,
+      canteenName,
+      subject,
+      message,
+      userResponseAdmin: '',
+      canteenResponseAdmin: '',
+    });
+
+    await newFeedback.save();
+
+    return res.status(201).json({ success: true, message: 'Feedback submitted successfully.', feedback: newFeedback });
+  } catch (error) {
+    console.error('Error sending feedback:', error);
+    return res.status(500).json({ success: false, message: 'Failed to submit feedback.', error: error.message });
   }
 };

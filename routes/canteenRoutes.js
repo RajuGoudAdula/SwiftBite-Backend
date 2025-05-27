@@ -3,7 +3,7 @@ const {} = require('../controllers/canteen/canteenController.js');
 const {getMenuItems,getMenuItemById,addMenuItem,updateMenuItem,deleteMenuItem} = require('../controllers/canteen/canteenMenuController.js');
 const {getOrders,updateOrderStatus} = require('../controllers/canteen/canteenOrderController.js');
 const {} = require('../controllers/canteen/canteenProfileController.js');
-const {getAllReviewsForCanteen, respondToReview} = require('../controllers/canteen/canteenReviewController.js');
+const {getAllReviewsForCanteen, respondToReview, getCanteenFeedbacks} = require('../controllers/canteen/canteenReviewController.js');
 const {getTodayOrders,getPendingOrders,getTotalRevenue,getPopularItem,getRecentActivity, toggleCanteen, getCanteenStatus} = require('../controllers/canteen/canteenDashboardController.js');
 const { getSalesData } = require('../controllers/canteen/canteenSalesDataController.js');
 const { getUserStatistics } = require('../controllers/canteen/canteenUserDataController.js');
@@ -26,6 +26,7 @@ router.put("/order/:orderId",authMiddleware("canteen"),updateOrderStatus);
 
 //Reviews 
 router.post('/:canteenId/add-response',authMiddleware("canteen"),respondToReview);
+router.get('/:canteenId',authMiddleware("canteen"),getCanteenFeedbacks);
 
 //Dashboard
 router.get("/orders/today",authMiddleware("canteen"),getTodayOrders);

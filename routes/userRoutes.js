@@ -7,7 +7,7 @@ const {getUserCart,addToCart,updateCartItem,removeFromCart,clearCart,getItemDeta
 const { createOrder, paymentWebhook, getPaymentStatus } = require("../controllers/user/userPaymentController");
 const {getUserOrders,cancelOrder} = require('../controllers/user/userOrderController');
 const {getProfile,sendEmailOtp,verifyEmailOtp , verifyPassword,updatePassword,updateUsername} =require('../controllers/user/userProfileController');
-const {addReview,updateReview,deleteReview,getUserReview,likeReview,disLikeReview} = require('../controllers/user/userReviewController');
+const {addReview,updateReview,deleteReview,getUserReview,likeReview,disLikeReview, sendCanteenFeedback} = require('../controllers/user/userReviewController');
 const { fetchPopularItems, debouncedSearch } = require('../controllers/user/userSearchController');
 const {addFavouriteItem,removeFavouriteItem,getFavouriteItems} = require('../controllers/user/userFavouriteItemsController');
 const { submitContactForm } = require('../controllers/user/userContactFormController');
@@ -56,6 +56,7 @@ router.post('/add-review/:productId',authMiddleware("user"),addReview);
 router.put('/update-review/:productId/:orderId',authMiddleware("user"),updateReview);
 router.delete('/delete-review/:productId/:orderId',authMiddleware("user"),deleteReview);
 router.get('/fetch-user-review/:orderId/:userId',authMiddleware("user"),getUserReview);
+router.post('/:userId/feedback/:canteenId',authMiddleware("user"),sendCanteenFeedback);
 
 router.get('/menu/popular',fetchPopularItems);
 router.get('/menu/search',debouncedSearch);
