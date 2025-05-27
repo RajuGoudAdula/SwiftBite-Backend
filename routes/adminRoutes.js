@@ -7,7 +7,7 @@ const {} = require('../controllers/admin/adminOrderController.js');
 const {} = require('../controllers/admin/adminPaymentController.js');
 const {} = require('../controllers/admin/adminProfileController.js');
 const {} = require('../controllers/admin/adminReviewController.js');
-const {} = require('../controllers/admin/adminUserController.js');
+const {  deleteUserByAdmin, getAllUsersForAdmin } = require('../controllers/admin/adminUserController.js');
 const {getAllProducts,getProductById,addProduct,updateProduct,deleteProduct} = require('../controllers/admin/adminProductsController.js');
 const { getAllBanners, updateBanner, deleteBanner, addHeroBanner, fetchCanteens } = require('../controllers/admin/adminBannerController.js');
 
@@ -45,8 +45,12 @@ router.delete('/delete-banner/:bannerId',authMiddleware("admin"),deleteBanner);
 router.get('/fetchCanteens',authMiddleware("admin"),fetchCanteens);
 
 //Dashboard
-router.get('/get-stats/:userId',authMiddleware("admin"),getAdminStats);
-router.get('/get-activity/:userId',authMiddleware("admin"),getRecentActivity);
+router.get('/get-stats',authMiddleware("admin"),getAdminStats);
+router.get('/get-activity',authMiddleware("admin"),getRecentActivity);
 router.get('/get-todays-orders',authMiddleware("admin"),getTodaysOrders);
+
+//User management
+router.get('/get-all-users',authMiddleware("admin"),getAllUsersForAdmin);
+router.delete('/delete/user/:userId',authMiddleware("admin"),deleteUserByAdmin);
 
 module.exports = router;

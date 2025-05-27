@@ -223,7 +223,6 @@ exports.login = async (req, res) => {
     // ✅ Generate Token
     const token = generateToken(user);
 
-    console.log(user);
 
     await sendNotification({
       userId: user?._id, // canteen staff userId
