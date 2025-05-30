@@ -6,56 +6,68 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+
   email: {
     type: String,
     required: true,
     unique: true,
     lowercase: true,
+    index: true, 
   },
+
   password: {
     type: String,
+    select: false, 
   },
-  googleId: { type: String },
+
+  googleId: {
+    type: String,
+    index: true, 
+  },
+
   phone: {
     type: String,
+    index: true, 
   },
+
   role: {
     type: String,
-    enum: ["user","canteen","admin"],
+    enum: ["user", "canteen", "admin"],
     default: "user",
+    index: true, 
   },
+
   isVerified: {
     type: Boolean,
     default: false,
   },
-  otp: {
-    code: String,
-    expiresAt: Date,
+
+
+  college: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "College",
+    index: true, 
   },
-  college : {
-    type : mongoose.Schema.Types.ObjectId,
-    ref : "College",
+
+  canteen: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Canteen",
+    index: true, 
   },
-  canteen : {
-    type : mongoose.Schema.Types.ObjectId,
-    ref : "Canteen",
-  },
+
   orders: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Order",
   }],
+
   cart: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Cart",
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  }
-}, { timestamps: true });
+}, {
+  timestamps: true, 
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true },
+});
 
 module.exports = mongoose.model("User", userSchema);

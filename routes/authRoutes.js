@@ -2,9 +2,7 @@ const express = require('express');
 const {
   register,
   verifyOTP,
-  setPassword,
   login,
-  logout,
   verifyUser,
   googleLogin,
   sendotp,

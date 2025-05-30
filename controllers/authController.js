@@ -1,13 +1,14 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const argon2 = require('argon2');
+const mongoose = require("mongoose");
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const {sendOTP} = require('../utils/sendOTP');
 const { sendNotification } = require('../services/NotificationService');
+const OtpStore = require('../models/OtpStore');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// ✅ Generate JWT Token
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role },
@@ -17,10 +18,13 @@ const generateToken = (user) => {
 };
 
 
-// ✅ Google Login
 exports.googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Token is required" });
+    }
 
     const ticket = await client.verifyIdToken({
       idToken: token,
@@ -29,27 +33,29 @@ exports.googleLogin = async (req, res) => {
 
     const payload = ticket.getPayload();
    
-    const { email, name, sub: googleId, picture } = payload;
+    const { email, name, sub: googleId } = payload;
 
     if (!email) {
       return res.status(400).json({ success: false, message: "Email not available from Google" });
     }
 
-    let user = await User.findOne({ email })
-      .populate("college", "name")
-      .populate("canteen", "name");
+    let user = await User.findOne({ email });
 
     if (!user) {
-      user = new User({
+      // Create user if not exists
+      user = await User.create({
         name,
         email,
         googleId,
         isVerified: true,
         role: "user",
-        // profileImage: picture,
       });
+    }
 
-      await user.save();
+    // Populate only if user exists (not during creation)
+    if (user.college || user.canteen) {
+      await user.populate("college", "name");
+      await user.populate("canteen", "name");
     }
 
     const jwtToken = generateToken(user);
@@ -78,83 +84,135 @@ exports.googleLogin = async (req, res) => {
 
 exports.sendotp = async (req, res) => {
   try {
-    console.log(req.body);
     const { email } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: "Email is required." });
     }
 
-    // ✅ Check if User Already Exists
-    let user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
 
-    if (user) {
-      return res.status(400).json({ message: 'User already registered.' });
+    // ✅ Check if user already registered
+    const userExists = await User.findOne({ email: normalizedEmail }).select('isVerified password');
+
+    if (userExists && userExists?.isVerified && userExists?.password) {
+      return res.status(400).json({ message: "User already registered." });
     }
 
     // ✅ Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // Expire in 5 mins
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    if (!user) {
-      // ✅ Create a temporary user (with required fields) for OTP storage
-      user = new User({
-        name: "Temporary", // Provide a default name
-        email,
-        password: "", // Empty password for temporary users
-        otp: { code: otp, expiresAt: otpExpiresAt },
-      });
-    } else {
-      // ✅ Update OTP for existing user
-      user.otp = { code: otp, expiresAt: otpExpiresAt };
-    }
-
-    await user.save(); // Save user with OTP
+    // ✅ Upsert OTP document
+    await OtpStore.findOneAndUpdate(
+      { email: normalizedEmail, purpose: "register" },
+      {
+        code: otpCode,
+        purpose: "register",
+        expiresAt: otpExpiresAt,
+        verified: false,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     // ✅ Send OTP
-    sendOTP(email, otp , "register");
+    await sendOTP(normalizedEmail, otpCode, "register");
 
-    res.status(200).json({ success: true, message: 'OTP sent successfully to your email' });
+    res.status(200).json({
+      success: true,
+      message: "OTP sent successfully to your email",
+    });
   } catch (error) {
-    console.log(error);
-    
-    res.status(500).json({ message: 'Failed to send OTP', error: error.message });
+    console.error("OTP Sending Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send OTP",
+      error: error.message,
+    });
   }
 };
 
 
-// ✅ Verify OTP (Registration Step 2)
+
 exports.verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
+
+  if (!email || !otp ) {
+    return res.status(400).json({ message: "Email and OTP are required." });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    // ✅ Find User
-    const user = await User.findOne({ email });
+    // ✅ Get OTP record inside session
+    const otpEntry = await OtpStore.findOne({ email, purpose : "register" }).session(session);
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+    if (!otpEntry) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "OTP not found. Please request a new one." });
     }
 
-    // ✅ Check if OTP Expired
-    if (user.otp.expiresAt < Date.now()) {
-      return res.status(400).json({ message: 'OTP Expired' });
+    // ✅ Check OTP expiration
+    if (otpEntry.expiresAt < Date.now()) {
+      await OtpStore.deleteOne({ _id: otpEntry._id }).session(session);
+      await session.commitTransaction();
+      session.endSession();
+      return res.status(410).json({ message: "OTP expired. Please request a new one." });
     }
 
-    // ✅ Check if OTP is Correct
-    if (user.otp.code !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
+    // ✅ Check OTP code
+    if (otpEntry.code !== otp) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(401).json({ message: "Invalid OTP. Please try again." });
     }
 
-    // ✅ Mark User as Verified
-    user.isVerified = true;
-    user.otp = undefined;
-    await user.save();
+    // ✅ Handle "register" purpose
+      let user = await User.findOne({ email }).session(session);
 
-    res.status(200).json({ success : true , message: 'OTP verified successfully' });
+      if (user && user.isVerified && user?.password) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ message: "Email already verified. Please login." });
+      }
+
+      if (!user) {
+        // 👤 Create user only after OTP is verified
+        user = new User({
+          name: otpEntry.name || "User",
+          email,
+          isVerified: true,
+          role: "user",
+        });
+
+        await user.save({ session });
+      } else {
+        user.isVerified = true;
+        await user.save({ session });
+      }
+
+    // ✅ Delete OTP after successful flow
+    await OtpStore.deleteOne({ _id: otpEntry._id }).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified and registration complete.",
+    });
+
   } catch (error) {
-    res.status(500).json({ message: 'Failed to verify OTP' });
+    await session.abortTransaction();
+    session.endSession();
+    console.error("❌ OTP Verification Transaction Error:", error);
+    return res.status(500).json({ message: "Verification failed. Please try again later." });
   }
 };
+
 
 
 exports.register = async (req, res) => {
@@ -179,7 +237,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Registration failed. Email not verified.' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await argon2.hash(password, 10);
 
     existingUser.name = username;
     existingUser.password = hashedPassword;
@@ -200,10 +258,12 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // ✅ Find User
+
     const user = await User.findOne({ email })
-                .populate("college", "name") 
-                .populate("canteen", "name status _id"); 
+      .select("+password googleId name email role") 
+      .populate("college", "name")
+      .populate("canteen", "name status _id")
+      .lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -215,7 +275,7 @@ exports.login = async (req, res) => {
     }
 
     // ✅ Verify Password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await argon2.verify( user.password , password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid Credentials' });
     }
@@ -224,9 +284,9 @@ exports.login = async (req, res) => {
     const token = generateToken(user);
 
 
-    await sendNotification({
-      userId: user?._id, // canteen staff userId
-      canteenId: user?.canteen?._id,  // optional, if you're grouping by canteen
+    sendNotification({
+      userId: user?._id, 
+      canteenId: user?.canteen?._id,  
       receiverRole: 'canteen',
       title: 'Login Successful',
       message: `Welcome to SwiftBite`,
