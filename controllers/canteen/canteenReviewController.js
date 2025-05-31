@@ -118,7 +118,11 @@ exports.respondToReview = async (req, res) => {
       return res.status(404).json({ message: "Review not found for this canteen" });
     }
 
-    res.status(200).json({ message: "Response added successfully" });
+    const updatedReview = reviewDoc.reviews.find(
+      (r) => r._id.toString() === reviewId.toString()
+    );
+
+    res.status(200).json({ message: "Response added successfully" , review : updatedReview ,success : true});
   } catch (error) {
     console.error("Error responding to review:", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -160,11 +164,10 @@ exports.editReview = async (req, res) => {
 // 🛠 Delete a review for specific canteen
 exports.deleteReview = async (req, res) => {
   try {
-    const { productId, reviewId, canteenId } = req.params;
+    const { reviewId, canteenId , userId } = req.params;
 
-    const reviewDoc = await Review.findOneAndUpdate(
+    const reviewDoc = await Reviews.findOneAndUpdate(
       {
-        productId,
         "reviews.canteenId": canteenId,
       },
       {
@@ -182,12 +185,15 @@ exports.deleteReview = async (req, res) => {
       return res.status(404).json({ message: "Review not found for this canteen" });
     }
 
-    res.status(200).json({ message: "Review deleted successfully" });
+    // The review has been removed, so no need to find it again.
+    // Just send back the deleted reviewId.
+    res.status(200).json({ message: "Review deleted successfully", reviewId });
   } catch (error) {
     console.error("Error deleting review:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 exports.getCanteenFeedbacks = async (req, res) => {
   const { canteenId } = req.params;
