@@ -6,6 +6,7 @@ const User = require('../models/User');
 const {sendOTP} = require('../utils/sendOTP');
 const { sendNotification } = require('../services/NotificationService');
 const OtpStore = require('../models/OtpStore');
+const sendWebPushNotification = require('../utils/sendWebPushNotification');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -258,9 +259,8 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-
     const user = await User.findOne({ email })
-      .select("+password googleId name email role") 
+      .select("+password googleId name email role")
       .populate("college", "name")
       .populate("canteen", "name status _id")
       .lean();
@@ -269,32 +269,43 @@ exports.login = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-
-    if(password && user?.googleId){
-      return res.status(403).json({message : 'You signed in with Google. Use Google to log in.'});
+    if (password && user?.googleId) {
+      await sendWebPushNotification(user._id, {
+        title: 'Login Failed',
+        body: 'You signed in using Google. Please use Google Sign-In.'
+      });
+      return res.status(403).json({ message: 'You signed in with Google. Use Google to log in.' });
     }
 
-    // ✅ Verify Password
-    const isMatch = await argon2.verify( user.password , password);
+    const isMatch = await argon2.verify(user.password, password);
     if (!isMatch) {
+      await sendWebPushNotification(user._id, {
+        title: 'Login Failed',
+        body: 'Invalid email or password.'
+      });
       return res.status(400).json({ message: 'Invalid Credentials' });
     }
 
-    // ✅ Generate Token
     const token = generateToken(user);
 
-
+    // Optional: call internal logic
     sendNotification({
-      userId: user?._id, 
-      canteenId: user?.canteen?._id,  
+      userId: user._id,
+      canteenId: user?.canteen?._id,
       receiverRole: 'canteen',
       title: 'Login Successful',
       message: `Welcome to SwiftBite`,
       type: 'system',
-      relatedRef: user?._id,
+      relatedRef: user._id,
       refModel: 'User',
     });
-    
+
+    // ✅ Send push notification on successful login
+    await sendWebPushNotification(user._id, {
+      title: 'Login Successful',
+      body: `Welcome back, ${user.name}!`
+    });
+
     res.status(200).json({
       success: true,
       message: "Login successful",
@@ -308,11 +319,13 @@ exports.login = async (req, res) => {
       },
       token
     });
+
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Login failed' });
   }
 };
+
 
 
 

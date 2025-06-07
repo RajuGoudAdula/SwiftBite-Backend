@@ -1,5 +1,6 @@
 const Order = require('../../models/Order');
 const { sendNotification } = require('../../services/NotificationService');
+const sendWebPushNotification = require('../../utils/sendWebPushNotification');
 
 exports.getOrders = async (req,res)=>{
     try {
@@ -74,42 +75,72 @@ exports.getOrders = async (req,res)=>{
 }
 
 
+
 exports.updateOrderStatus = async (req, res) => {
-    try {
-        const { orderId } = req.params;
-        const { status } = req.body;
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
 
-        // Validate required fields
-        if (!orderId || !status) {
-            return res.status(400).json({ success: false, message: "Order ID and Status are required" });
-        }
-
-        // Find the order by ID
-        const order = await Order.findById(orderId);
-        if (!order) {
-            return res.status(404).json({ success: false, message: "Order not found" });
-        }
-
-
-        // Update the order status
-        order.orderStatus = status;
-        await order.save({ validateModifiedOnly: true });
-
-        await sendNotification({
-          userId: order.userId,
-          receiverRole: 'student',
-          title: `Order ${order.orderStatus}`,
-          message: order.orderStatus === 'Completed'
-            ? `Your order #${order._id} has been completed! Enjoy your meal, and thank you for ordering with us.`
-            : `Your order #${order._id} is now "${order.orderStatus}".`,
-          type: 'order',
-          refModel: 'Order',
-          relatedRef: order._id,
-        });
-        
-        res.status(200).json({ success: true, message: "Order status updated successfully", order });
-    } catch (error) {
-        console.error("Error updating order status:", error);
-        res.status(500).json({ success: false, message: "Server Error" });
+    // Validate required fields
+    if (!orderId || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID and Status are required"
+      });
     }
+
+    // Find the order by ID
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Update the order status
+    order.orderStatus = status;
+    await order.save({ validateModifiedOnly: true });
+
+    const statusMessage = status === 'Completed'
+      ? `Your order #${order._id} has been completed! Enjoy your meal, and thank you for ordering with us.`
+      : `Your order #${order._id} is now "${status}".`;
+
+    // ✅ Send in-app notification
+    await sendNotification({
+      userId: order.userId,
+      receiverRole: 'student',
+      title: `Order ${status}`,
+      message: statusMessage,
+      type: 'order',
+      refModel: 'Order',
+      relatedRef: order._id,
+    });
+
+    // ✅ Send Web Push notification
+    await sendWebPushNotification(order.userId, {
+      title: `Order ${status}`,
+      options: {
+        body: statusMessage,      
+        vibrate: [200, 100, 200],
+        data: {
+          url: `/orders/${order._id}`             // Where to take user on click
+        },
+        actions: [
+          { action: 'open', title: 'View Order' },
+          { action: 'dismiss', title: 'Dismiss' }
+        ],
+        requireInteraction: true
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Order status updated successfully",
+      order
+    });
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
 };

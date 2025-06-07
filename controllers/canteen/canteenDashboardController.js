@@ -7,6 +7,7 @@ const Canteen = require('../../models/Canteen');
 const User = require('../../models/User');
 const { sendNotification } = require('../../services/NotificationService');
 const HeroBanner = require('../../models/HeroBanner');
+const sendWebPushNotification = require('../../utils/sendWebPushNotification');
 
 // 1. Today's Orders
 exports.getTodayOrders = async (req, res) => {
@@ -148,7 +149,7 @@ exports.toggleCanteen = async (req, res) => {
       return res.status(400).json({ message: "Canteen ID is required." });
     }
 
-    const canteen = await Canteen.findById(canteenId).populate('collegeId','name');
+    const canteen = await Canteen.findById(canteenId).populate('collegeId', 'name');
 
     if (!canteen) {
       return res.status(404).json({ message: "Canteen not found." });
@@ -158,54 +159,80 @@ exports.toggleCanteen = async (req, res) => {
     const newStatus = canteen.status === "active" ? "inactive" : "active";
     canteen.status = newStatus;
     await canteen.save();
-    const users = await User.find({ canteen : canteenId }).select('_id');
+
+    // Get users belonging to this canteen
+    const users = await User.find({ canteen: canteenId }).select('_id');
     const userIds = users.map(user => user._id);
+
+    const isInactive = newStatus === 'inactive';
+
+    const title = isInactive
+      ? 'Canteen is Now Closed.'
+      : 'Canteen is Now Open!';
+
+    const message = isInactive
+      ? `The canteen at ${canteen?.name}, ${canteen?.collegeId?.name}, is now closed. Thank you for your orders today—we'll be serving again soon!`
+      : `The canteen at ${canteen?.name}, ${canteen?.collegeId?.name}, is now open. You're welcome to place your order right away and enjoy your favorite meals!`;
+
+    // ✅ Internal notification
     await sendNotification({
-      userId: userIds, // or use the admin/owner user ID if available
-      receiverRole: 'student', // or 'all', depending on who should be notified
-      title: canteen.status === 'inactive'
-      ? `Canteen is Now Closed.`
-      : `Canteen is Now Open!`,
-      message: canteen.status === 'inactive'
-        ? `The canteen at ${canteen?.name}, ${canteen?.collegeId?.name}, is now closed. Thank you for your orders today—we'll be serving again soon!`
-        : `The canteen at ${canteen?.name}, ${canteen?.collegeId?.name}, is now open. You're welcome to place your order right away and enjoy your favorite meals!`,
+      userId: userIds,
+      receiverRole: 'student',
+      title,
+      message,
       type: 'canteen',
       refModel: 'Canteen',
       relatedRef: canteen._id,
     });
 
+    // ✅ Web Push Notification
+    for (const userId of userIds) {
+      await sendWebPushNotification(userId, {
+        title,
+        options: {
+          body: message,
+          icon: '/favicon/icon-192x192.png',
+          badge: '/favicon/badge-72x72.png',
+          vibrate: [200, 100, 200],
+          data: { url: '/' },
+          actions: [
+            { action: 'open', title: 'Open App' },
+            { action: 'dismiss', title: 'Dismiss' }
+          ],
+          requireInteraction: true
+        }
+      });
+    }
+
+    // ✅ Update banner for "Canteen is Closed"
     if (newStatus === 'inactive' || newStatus === 'active') {
       const bannerTitle = 'Canteen is Closed';
-    
       const banner = await HeroBanner.findOne({ title: bannerTitle });
-      console.log("Canteeen Bannererrr");
-      console.log(banner);
+
       if (banner) {
         const index = banner.targetCanteens.findIndex(id => id.toString() === canteenId.toString());
-        console.log(index);
-        if (newStatus === 'inactive' && index === -1) {
-          // Add canteenId if not present
+
+        if (isInactive && index === -1) {
           banner.targetCanteens.push(canteenId);
           await banner.save();
-        } else if (newStatus === 'active' && index !== -1) {
-          // Remove canteenId if it exists
+        } else if (!isInactive && index !== -1) {
           banner.targetCanteens.splice(index, 1);
           await banner.save();
         }
-        // console.log(banner);
       }
     }
-    
-    
+
     res.status(200).json({
       message: `Canteen is now ${newStatus}.`,
       status: newStatus
     });
+
   } catch (err) {
-    console.log(err);
+    console.error('Toggle Canteen Error:', err);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 exports.getCanteenStatus = async (req,res) => {
   try{

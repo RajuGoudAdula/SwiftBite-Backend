@@ -35,12 +35,15 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const canteenRoutes = require('./routes/canteenRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const pushRoutes = require('./routes/pushRoutes');
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/canteen', canteenRoutes);
 app.use('/api/notifications',notificationRoutes);
+app.use('/api/push/',pushRoutes);
 
 app.use((req, res, next) => {
   console.log(`${req.method} request to ${req.url}`);
