@@ -16,11 +16,11 @@ const { getHeroBanners } = require('../controllers/user/userHeroBannerController
 
 const router = express.Router();
 
-router.get('/colleges',authMiddleware("user"),getAllColleges);
-router.get('/colleges/:collegeId/canteens',authMiddleware("user"),getCanteensByCollege);
-router.put('/update-college-canteen/:userId',authMiddleware("user"),updateCollegeCanteen);
-router.get('/:canteenId/menu',authMiddleware("user"),getMenuOfCanteen);
-router.get('/fetch-canteen-status/:canteenId',authMiddleware("user"),fetchCanteenStatus);
+router.get('/colleges',getAllColleges);
+router.get('/colleges/:collegeId/canteens',getCanteensByCollege);
+router.put('/update-college-canteen/:userId',updateCollegeCanteen);
+router.get('/:canteenId/menu',getMenuOfCanteen);
+router.get('/fetch-canteen-status/:canteenId',fetchCanteenStatus);
 
 
 router.get('/cart/fetch-cart/:userId',authMiddleware("user"),getUserCart);

@@ -191,8 +191,6 @@ exports.toggleCanteen = async (req, res) => {
         title,
         options: {
           body: message,
-          icon: '/favicon/icon-192x192.png',
-          badge: '/favicon/badge-72x72.png',
           vibrate: [200, 100, 200],
           data: { url: '/' },
           actions: [
