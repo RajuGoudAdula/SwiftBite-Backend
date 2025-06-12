@@ -27,6 +27,24 @@ router.post('/subscribe', async (req, res) => {
   res.status(201).json({ message: 'Subscription saved' });
 });
 
+// Unsubscribe route
+router.post('/unsubscribe', async (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId' });
+  }
+
+  try {
+    await PushSubscription.deleteOne({ userId });
+    res.status(200).json({ message: 'Subscription removed' });
+  } catch (error) {
+    console.error('Error unsubscribing user:', error);
+    res.status(500).json({ error: 'Failed to remove subscription' });
+  }
+});
+
+
 // Send notification
 router.post('/notify', async (req, res) => {
   const {

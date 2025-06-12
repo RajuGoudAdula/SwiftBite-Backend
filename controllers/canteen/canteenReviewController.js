@@ -1,5 +1,4 @@
 const Reviews = require("../../models/Review");
-const Orders = require("../../models/Order");
 const User = require("../../models/User");
 const Product = require("../../models/Product");
 const Feedback = require("../../models/Feedback");
@@ -161,38 +160,45 @@ exports.editReview = async (req, res) => {
   }
 };
 
-// 🛠 Delete a review for specific canteen
+// 🛠 Delete a review for a specific product (canteen item)
 exports.deleteReview = async (req, res) => {
   try {
-    const { reviewId, canteenId , userId } = req.params;
+    const { productId, orderId, userId } = req.params;
 
-    const reviewDoc = await Reviews.findOneAndUpdate(
-      {
-        "reviews.canteenId": canteenId,
-      },
-      {
-        $pull: {
-          reviews: {
-            _id: reviewId,
-            canteenId: canteenId, // ensure canteen matches
-          },
-        },
-      },
-      { new: true }
-    );
-
-    if (!reviewDoc) {
-      return res.status(404).json({ message: "Review not found for this canteen" });
+    if (!productId || !orderId || !userId) {
+      return res.status(400).json({ message: "Missing required parameters: productId, orderId, or userId." });
     }
 
-    // The review has been removed, so no need to find it again.
-    // Just send back the deleted reviewId.
-    res.status(200).json({ message: "Review deleted successfully", reviewId });
+    const reviewDoc = await Reviews.findOne({ productId });
+
+    if (!reviewDoc) {
+      return res.status(404).json({ message: "No reviews found for this product." });
+    }
+
+    const originalLength = reviewDoc.reviews.length;
+
+    reviewDoc.reviews = reviewDoc.reviews.filter(
+      (r) => !(r.orderId.toString() === orderId && r.userId.toString() === userId)
+    );
+
+    if (reviewDoc.reviews.length === originalLength) {
+      return res.status(403).json({ message: "It does not exist." });
+    }
+
+    await reviewDoc.save();
+
+    res.status(200).json({ 
+      success: true,
+      message: "Review deleted successfully.",
+      data: { productId, orderId }
+    });
+
   } catch (error) {
     console.error("Error deleting review:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: "Something went wrong while deleting the review. Please try again later." });
   }
 };
+
 
 
 exports.getCanteenFeedbacks = async (req, res) => {
