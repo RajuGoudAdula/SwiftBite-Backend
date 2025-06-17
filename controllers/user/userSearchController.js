@@ -1,5 +1,6 @@
 const CanteenMenuItem = require('../../models/CanteenMenuItem');
 const Product = require('../../models/Product'); // Assuming you have a Product model
+const mongoose = require('mongoose');
 
 // @desc    Get popular menu items
 // @route   GET /user/menu/popular
@@ -106,199 +107,260 @@ const fetchPopularItems = async (req, res) => {
 // @access  Public
 const debouncedSearch = async (req, res) => {
   try {
-      const { q: query } = req.query;
+    const { q: query } = req.query;
+    const { canteenId } = req.params;
 
-      if (!query?.trim()) {
-          return res.status(400).json({
-              success: false,
-              error: "Please provide a search query",
-          });
-      }
+    if (!query?.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Please provide a search query",
+      });
+    }
 
-      // Escape special regex characters
-      const escapedQuery = escapeRegex(query);
-      // Case-insensitive regex for starting with query
-      const startsWithRegex = new RegExp(`^${escapedQuery}`, "i");
-      // Case-insensitive regex for containing query anywhere
-      const containsRegex = new RegExp(escapedQuery, "i");
+    const escapeRegex = (str) =>
+      str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-      const searchResults = await CanteenMenuItem.aggregate([
-          {
-              $lookup: {
-                  from: "products",
-                  localField: "productId",
-                  foreignField: "_id",
-                  as: "productDetails",
+    const escapedQuery = escapeRegex(query);
+    const startsWithRegex = new RegExp(`^${escapedQuery}`, "i");
+    const containsRegex = new RegExp(escapedQuery, "i");
+
+    const searchResults = await CanteenMenuItem.aggregate([
+      {
+        $match: {
+          canteenId: new mongoose.Types.ObjectId(canteenId),
+          isAvailable: true
+        }
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "productId",
+          foreignField: "_id",
+          as: "productDetails",
+        },
+      },
+      { $unwind: "$productDetails" },
+      {
+        $lookup: {
+          from: "canteens",
+          localField: "canteenId",
+          foreignField: "_id",
+          as: "canteenDetails",
+        },
+      },
+      { $unwind: "$canteenDetails" },
+      {
+        $match: {
+          $or: [
+            { name: { $type: "string", $regex: startsWithRegex } },
+            { "productDetails.name": { $type: "string", $regex: startsWithRegex } },
+            { name: { $type: "string", $regex: containsRegex } },
+            { "productDetails.name": { $type: "string", $regex: containsRegex } },
+            { "productDetails.category": { $type: "string", $regex: startsWithRegex } },
+            { "productDetails.category": { $type: "string", $regex: containsRegex } },
+            { "productDetails.description": { $type: "string", $regex: containsRegex } },
+            { "offers.offerType": { $type: "string", $regex: containsRegex } },
+            { "canteenDetails.name": { $type: "string", $regex: containsRegex } },
+            { "productDetails.tags": { $elemMatch: { $type: "string", $regex: containsRegex } } },
+            { "productDetails.ingredients": { $elemMatch: { $type: "string", $regex: containsRegex } } }
+          ]
+        }
+      },
+      {
+        $addFields: {
+          relevanceScore: {
+            $sum: [
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$name", null] },
+                      { $eq: [{ $type: "$name" }, "string"] },
+                      { $regexMatch: { input: "$name", regex: startsWithRegex } }
+                    ]
+                  },
+                  100,
+                  0
+                ]
               },
-          },
-          { $unwind: "$productDetails" },
-          {
-              $lookup: {
-                  from: "canteens",
-                  localField: "canteenId",
-                  foreignField: "_id",
-                  as: "canteenDetails",
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$productDetails.name", null] },
+                      { $eq: [{ $type: "$productDetails.name" }, "string"] },
+                      { $regexMatch: { input: "$productDetails.name", regex: startsWithRegex } }
+                    ]
+                  },
+                  100,
+                  0
+                ]
               },
-          },
-          { $unwind: "$canteenDetails" },
-          {
-              $match: {
-                  $or: [
-                      // Priority 1: Name starts with query
-                      { name: { $regex: startsWithRegex } },
-                      { "productDetails.name": { $regex: startsWithRegex } },
-                      
-                      // Priority 2: Name contains query
-                      { name: { $regex: containsRegex } },
-                      { "productDetails.name": { $regex: containsRegex } },
-                      
-                      // Priority 3: Category matches
-                      { "productDetails.category": { $regex: startsWithRegex } },
-                      { "productDetails.category": { $regex: containsRegex } },
-                      
-                      // Priority 4: Other fields
-                      { "productDetails.description": { $regex: containsRegex } },
-                      { "productDetails.tags": { $elemMatch: { $regex: containsRegex } } },
-                      { "productDetails.ingredients": { $elemMatch: { $regex: containsRegex } } },
-                      { "offers.offerType": { $regex: containsRegex } },
-                      { "canteenDetails.name": { $regex: containsRegex } },
-                  ]
-              }
-          },
-          {
-              $addFields: {
-                  relevanceScore: {
-                      $sum: [
-                          // Highest score for names starting with query
-                          { $cond: [{ $and: [
-                              { $ne: ["$name", null] },
-                              { $eq: [{ $type: "$name" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$name", regex: startsWithRegex } }, 100, 0] }, 0] },
-                          
-                          { $cond: [{ $and: [
-                              { $ne: ["$productDetails.name", null] },
-                              { $eq: [{ $type: "$productDetails.name" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$productDetails.name", regex: startsWithRegex } }, 100, 0] }, 0] },
-                          
-                          // High score for names containing query
-                          { $cond: [{ $and: [
-                              { $ne: ["$name", null] },
-                              { $eq: [{ $type: "$name" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$name", regex: containsRegex } }, 50, 0] }, 0] },
-                          
-                          { $cond: [{ $and: [
-                              { $ne: ["$productDetails.name", null] },
-                              { $eq: [{ $type: "$productDetails.name" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$productDetails.name", regex: containsRegex } }, 50, 0] }, 0] },
-                          
-                          // Category matches
-                          { $cond: [{ $and: [
-                              { $ne: ["$productDetails.category", null] },
-                              { $eq: [{ $type: "$productDetails.category" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$productDetails.category", regex: startsWithRegex } }, 40, 0] }, 0] },
-                          
-                          { $cond: [{ $and: [
-                              { $ne: ["$productDetails.category", null] },
-                              { $eq: [{ $type: "$productDetails.category" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$productDetails.category", regex: containsRegex } }, 20, 0] }, 0] },
-                          
-                          // Other fields with type checking
-                          { $cond: [{ $and: [
-                              { $ne: ["$productDetails.description", null] },
-                              { $eq: [{ $type: "$productDetails.description" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$productDetails.description", regex: containsRegex } }, 5, 0] }, 0] },
-                          
-                          { $cond: [{ $and: [
-                              { $ne: ["$offers.offerType", null] },
-                              { $eq: [{ $type: "$offers.offerType" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$offers.offerType", regex: containsRegex } }, 5, 0] }, 0] },
-                          
-                          { $cond: [{ $and: [
-                              { $ne: ["$canteenDetails.name", null] },
-                              { $eq: [{ $type: "$canteenDetails.name" }, "string"] }
-                          ]}, { $cond: [{ $regexMatch: { input: "$canteenDetails.name", regex: containsRegex } }, 10, 0] }, 0] },
-                          
-                          // Count matches in array fields
-                          { $size: { 
-                              $filter: { 
-                                  input: { $ifNull: ["$productDetails.tags", []] }, 
-                                  as: "tag", 
-                                  cond: { 
-                                      $and: [
-                                          { $ne: ["$$tag", null] },
-                                          { $eq: [{ $type: "$$tag" }, "string"] },
-                                          { $regexMatch: { input: "$$tag", regex: containsRegex } }
-                                      ]
-                                  } 
-                              } 
-                          } },
-                          
-                          { $size: { 
-                              $filter: { 
-                                  input: { $ifNull: ["$productDetails.ingredients", []] }, 
-                                  as: "ing", 
-                                  cond: { 
-                                      $and: [
-                                          { $ne: ["$$ing", null] },
-                                          { $eq: [{ $type: "$$ing" }, "string"] },
-                                          { $regexMatch: { input: "$$ing", regex: containsRegex } }
-                                      ]
-                                  } 
-                              } 
-                          } },
-                          
-                          // Bonus for available items
-                          { $cond: ["$isAvailable", 5, 0] }
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: [{ $type: "$name" }, "string"] },
+                      { $regexMatch: { input: "$name", regex: containsRegex } }
+                    ]
+                  },
+                  50,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: [{ $type: "$productDetails.name" }, "string"] },
+                      { $regexMatch: { input: "$productDetails.name", regex: containsRegex } }
+                    ]
+                  },
+                  50,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: [{ $type: "$productDetails.category" }, "string"] },
+                      { $regexMatch: { input: "$productDetails.category", regex: startsWithRegex } }
+                    ]
+                  },
+                  40,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: [{ $type: "$productDetails.category" }, "string"] },
+                      { $regexMatch: { input: "$productDetails.category", regex: containsRegex } }
+                    ]
+                  },
+                  20,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: [{ $type: "$productDetails.description" }, "string"] },
+                      { $regexMatch: { input: "$productDetails.description", regex: containsRegex } }
+                    ]
+                  },
+                  5,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: [{ $type: "$offers.offerType" }, "string"] },
+                      { $regexMatch: { input: "$offers.offerType", regex: containsRegex } }
+                    ]
+                  },
+                  5,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: [{ $type: "$canteenDetails.name" }, "string"] },
+                      { $regexMatch: { input: "$canteenDetails.name", regex: containsRegex } }
+                    ]
+                  },
+                  10,
+                  0
+                ]
+              },
+              {
+                $size: {
+                  $filter: {
+                    input: { $ifNull: ["$productDetails.tags", []] },
+                    as: "tag",
+                    cond: {
+                      $and: [
+                        { $eq: [{ $type: "$$tag" }, "string"] },
+                        { $regexMatch: { input: "$$tag", regex: containsRegex } }
                       ]
+                    }
                   }
-              }
-          },
-          {
-              $sort: {
-                  relevanceScore: -1,
-                  "productDetails.name": 1,
-                  "canteenDetails.name": 1
-              }
-          },
-          {
-              $project: {
-                  _id: 1,
-                  name: 1,
-                  price: 1,
-                  stock: 1,
-                  isAvailable: 1,
-                  preparationTime: 1,
-                  deliveryTime: 1,
-                  image: "$productDetails.image",
-                  canteenName: "$canteenDetails.name",
-                  canteenId: "$canteenDetails._id",
-                  description: "$productDetails.description",
-                  tags: "$productDetails.tags",
-                  category: "$productDetails.category",
-                  ingredients: "$productDetails.ingredients",
-                  allergens: "$productDetails.allergens",
-                  offerType: "$offers.offerType",
-                  offerDiscount: "$offers.discount",
-                  availability: 1,
-                  relevanceScore: 1
+                }
               },
-          },
-          { $limit: 20 }
-      ]);
+              {
+                $size: {
+                  $filter: {
+                    input: { $ifNull: ["$productDetails.ingredients", []] },
+                    as: "ing",
+                    cond: {
+                      $and: [
+                        { $eq: [{ $type: "$$ing" }, "string"] },
+                        { $regexMatch: { input: "$$ing", regex: containsRegex } }
+                      ]
+                    }
+                  }
+                }
+              },
+              { $cond: ["$isAvailable", 5, 0] }
+            ]
+          }
+        }
+      },
+      {
+        $sort: {
+          relevanceScore: -1,
+          "productDetails.name": 1,
+          "canteenDetails.name": 1
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          price: 1,
+          stock: 1,
+          isAvailable: 1,
+          preparationTime: 1,
+          deliveryTime: 1,
+          image: "$productDetails.image",
+          canteenName: "$canteenDetails.name",
+          canteenId: "$canteenDetails._id",
+          description: "$productDetails.description",
+          tags: "$productDetails.tags",
+          category: "$productDetails.category",
+          ingredients: "$productDetails.ingredients",
+          allergens: "$productDetails.allergens",
+          offerType: "$offers.offerType",
+          offerDiscount: "$offers.discount",
+          availability: 1,
+          relevanceScore: 1
+        },
+      },
+      { $limit: 20 }
+    ]);
 
-      return res.json({
-          success: true,
-          count: searchResults.length,
-          data: searchResults,
-      });
+    return res.json({
+      success: true,
+      count: searchResults.length,
+      data: searchResults,
+    });
   } catch (err) {
-      console.error("Search error:", err);
-      return res.status(500).json({
-          success: false,
-          error: "Server Error",
-      });
+    console.error("Search error:", err);
+    return res.status(500).json({
+      success: false,
+      error: "Server Error",
+    });
   }
 };
+
+
 
 function escapeRegex(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');

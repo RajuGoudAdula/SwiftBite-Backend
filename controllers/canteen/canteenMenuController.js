@@ -3,12 +3,15 @@ const Cart = require("../../models/Cart");
 
 exports.getMenuItems = async (req, res) => {
     try {
-      const menuItems = await MenuItem.find().sort({ createdAt: -1 }).populate('productId');; // Sort by latest
+      const {canteenId} = req.params;
+      const menuItems = await MenuItem.find({canteenId}).sort({ createdAt: -1 }).populate('productId');
       res.status(200).json(menuItems);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch menu items", error });
     }
   };
+
+ 
 
   exports.getMenuItemById = async (req, res) => {
     try {
@@ -23,31 +26,45 @@ exports.getMenuItems = async (req, res) => {
 
   exports.addMenuItem = async (req, res) => {
     try {
-      const {canteenId} = req.params;
-      const itemData ={
-        canteenId, 
-        productId : req.body.productId, 
-        name : req.body.name,
-        price : 0, 
-        stock : 0, 
-        preparationTime : 0, 
-        deliveryTime : 0, 
-        isAvailable : false
+      const { canteenId } = req.params;
+      const { productId, name } = req.body;
+  
+      // 1. Check if the item already exists in the menu for this canteen
+      const existingItem = await MenuItem.findOne({ canteenId, productId });
+  
+      if (existingItem) {
+        return res.status(400).json({
+          message: "This product is already added to the menu.",
+          existingItem
+        });
+      }
+  
+      // 2. Create new item
+      const itemData = {
+        canteenId,
+        productId,
+        name,
+        price: 0,
+        stock: 0,
+        preparationTime: 0,
+        deliveryTime: 0,
+        isAvailable: false,
       };
   
       const newMenuItem = new MenuItem(itemData);
       await newMenuItem.save();
-      
+  
       const populatedMenuItem = await newMenuItem.populate('productId');
-
+  
       res.status(201).json({
         message: "Menu item added successfully",
-        newMenuItem: populatedMenuItem
+        newMenuItem: populatedMenuItem,
       });
     } catch (error) {
-      res.status(500).json({ message: "Error adding menu item", error });
+      res.status(500).json({ message: "Error adding menu item", error: error.message });
     }
   };
+  
 
 
 

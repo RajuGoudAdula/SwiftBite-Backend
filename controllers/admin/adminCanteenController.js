@@ -1,26 +1,46 @@
-const bcrypt = require("bcryptjs");
+const argon2 = require("argon2");
 const Canteen = require('../../models/Canteen');
 const User = require('../../models/User');
+const CanteenMenuItem = require("../../models/CanteenMenuItem");
 
 exports.createCanteen = async (req, res) => {
   try {
     const { collegeId } = req.params;
     const { name, email, password, phone, bankDetails } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const canteenData = { name,email,password:hashedPassword,phone,bankDetails, collegeId }; // Ensure the canteen is linked to the college
+
+    // Use argon2 to hash the password
+    const hashedPassword = await argon2.hash(password);
+
+    const canteenData = {
+      name,
+      email,
+      password: hashedPassword,
+      phone,
+      bankDetails,
+      collegeId, // Link to the college
+    };
+
     const canteen = await Canteen.create(canteenData);
-    const userData={
-      name,email,password:hashedPassword,phone, role: "canteen",
+
+    const userData = {
+      name,
+      email,
+      password: hashedPassword,
+      phone,
+      role: "canteen",
       isVerified: true,
       college: collegeId,
       canteen: canteen._id,
     };
+
     const user = await User.create(userData);
+
     res.status(201).json(canteen);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 exports.updateCanteen = async (req, res) => {
   try {
@@ -55,6 +75,7 @@ exports.deleteCanteen = async (req, res) => {
     if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found for this college' });
     }
+    await CanteenMenuItem.deleteMany({ canteenId });
 
     res.status(200).json({ message: 'Canteen deleted successfully' });
   } catch (error) {

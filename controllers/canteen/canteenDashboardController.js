@@ -12,43 +12,80 @@ const sendWebPushNotification = require('../../utils/sendWebPushNotification');
 // 1. Today's Orders
 exports.getTodayOrders = async (req, res) => {
   try {
+    const { canteenId } = req.params;
+
+    if (!canteenId) {
+      return res.status(400).json({ message: "Canteen ID is required" });
+    }
+
     const today = moment().startOf('day');
     const yesterday = moment().subtract(1, 'day').startOf('day');
 
-    const todayCount = await Order.countDocuments({ createdAt: { $gte: today.toDate() } });
+    // Get today's orders for the canteen
+    const todayCount = await Order.countDocuments({
+      canteenId,
+      createdAt: { $gte: today.toDate() }
+    });
+
+    // Get yesterday's orders for comparison
     const yesterdayCount = await Order.countDocuments({
-      createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() },
+      canteenId,
+      createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() }
     });
 
     const changeValue = todayCount - yesterdayCount;
     const positive = changeValue >= 0;
-    const change = (positive ? "+" : "-") + changeValue + " from yesterday";
+    const change = `${positive ? "+" : "-"}${Math.abs(changeValue)} from yesterday`;
 
-    res.status(200).json({ count: todayCount, change, positive });
+    res.status(200).json({
+      count: todayCount,
+      change,
+      positive
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error in getTodayOrders:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
 
 // 2. Pending Orders
+
 exports.getPendingOrders = async (req, res) => {
   try {
-    const today = moment().startOf('day');
-    const yesterday = moment().subtract(1, 'day').startOf('day');
+    const { canteenId } = req.params;
 
-    const todayPendingCount = await Order.countDocuments({ createdAt: { $gte: today.toDate() } });
+    if (!canteenId) {
+      return res.status(400).json({ message: "Canteen ID is required" });
+    }
+
+    const today = moment().startOf("day");
+    const yesterday = moment().subtract(1, "day").startOf("day");
+
+    const todayPendingCount = await Order.countDocuments({
+      canteenId,
+      orderStatus: "Pending",
+      createdAt: { $gte: today.toDate() },
+    });
+
     const yesterdayPendingCount = await Order.countDocuments({
+      canteenId,
+      orderStatus: "Pending",
       createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() },
     });
-    // Calculate the change
+
     const changeValue = todayPendingCount - yesterdayPendingCount;
     const positive = changeValue >= 0;
-    const change = (positive ? "+" : "-") + changeValue + " from yesterday";
+    const change = `${positive ? "+" : "-"}${Math.abs(changeValue)} from yesterday`;
 
-    res.status(200).json({ count: todayPendingCount, change, positive });
+    res.status(200).json({
+      count: todayPendingCount,
+      change,
+      positive,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error in getPendingOrders:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -56,16 +93,45 @@ exports.getPendingOrders = async (req, res) => {
 // 3. Total Revenue
 exports.getTotalRevenue = async (req, res) => {
   try {
-    const today = moment().startOf('day');
-    const yesterday = moment().subtract(1, 'day').startOf('day');
+    const { canteenId } = req.params;
+
+    if (!canteenId) {
+      return res.status(400).json({ message: "Canteen ID is required" });
+    }
+
+    const today = moment().startOf("day");
+    const yesterday = moment().subtract(1, "day").startOf("day");
 
     const todayRevenueAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: today.toDate() }, paymentStatus: 'Paid' } },
-      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } },
+      {
+        $match: {
+          canteenId:new mongoose.Types.ObjectId(canteenId),
+          createdAt: { $gte: today.toDate() },
+          paymentStatus: "Paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          revenue: { $sum: "$totalAmount" },
+        },
+      },
     ]);
+
     const yesterdayRevenueAgg = await Order.aggregate([
-      { $match: { createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() }, paymentStatus: 'Paid' } },
-      { $group: { _id: null, revenue: { $sum: '$totalAmount' } } },
+      {
+        $match: {
+          canteenId:new mongoose.Types.ObjectId(canteenId),
+          createdAt: { $gte: yesterday.toDate(), $lt: today.toDate() },
+          paymentStatus: "Paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          revenue: { $sum: "$totalAmount" },
+        },
+      },
     ]);
 
     const todayRevenue = todayRevenueAgg[0]?.revenue || 0;
@@ -75,10 +141,11 @@ exports.getTotalRevenue = async (req, res) => {
 
     res.status(200).json({
       revenue: todayRevenue,
-      change: `₹${Math.abs(change).toLocaleString()} ${positive ? '↑' : '↓'} from yesterday`,
+      change: `₹${Math.abs(change).toLocaleString()} ${positive ? "↑" : "↓"} from yesterday`,
       positive,
     });
   } catch (err) {
+    console.error("Error in getTotalRevenue:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -128,14 +195,26 @@ exports.getPopularItem = async (req, res) => {
 // 5. Recent Activity
 exports.getRecentActivity = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }).limit(5).populate('items.productId');
+    const { canteenId } = req.params;
+
+    if (!canteenId) {
+      return res.status(400).json({ message: "Canteen ID is required" });
+    }
+
+    const orders = await Order.find({ canteenId:new mongoose.Types.ObjectId(canteenId) })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("userId", "name") // Assuming `name` exists on the User model
+      .populate("items.productId", "name");
+
     const activity = orders.map(order => ({
-      message: `Order placed by ${order.userId || 'Unknown User'} for ₹${order.totalAmount}`,
+      message: `Order placed by ${order.userId?.name || "Unknown User"} for ₹${order.totalAmount}`,
       timeAgo: moment(order.createdAt).fromNow(),
     }));
 
     res.status(200).json(activity);
   } catch (err) {
+    console.error("Recent activity error:", err);
     res.status(500).json({ message: err.message });
   }
 };

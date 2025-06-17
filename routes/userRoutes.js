@@ -59,7 +59,7 @@ router.get('/fetch-user-review/:orderId/:userId',authMiddleware("user"),getUserR
 router.post('/:userId/feedback/:canteenId',authMiddleware("user"),sendCanteenFeedback);
 
 router.get('/menu/popular',fetchPopularItems);
-router.get('/menu/search',debouncedSearch);
+router.get('/menu/:canteenId/search',debouncedSearch);
 
 router.post('/add-favourite-item/:userId/:canteenId',authMiddleware("user"),addFavouriteItem);
 router.delete('/remove-favourite-item/:userId/:canteenId/:itemId',authMiddleware("user"),removeFavouriteItem);

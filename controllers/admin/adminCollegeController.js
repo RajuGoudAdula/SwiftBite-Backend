@@ -1,3 +1,4 @@
+const Canteen = require('../../models/Canteen');
 const College = require('../../models/College');
 
 exports.createCollege = async (req, res) => {
@@ -20,9 +21,23 @@ exports.updateCollege = async (req, res) => {
 
 exports.deleteCollege = async (req, res) => {
   try {
-    await College.findByIdAndDelete(req.params.collegeId);
-    res.status(200).json({ message: 'College deleted successfully' });
+    const { collegeId } = req.params;
+
+    // Check if the college exists
+    const college = await College.findById(collegeId);
+    if (!college) {
+      return res.status(404).json({ message: "College not found" });
+    }
+
+    // Delete all canteens linked to this college
+    await Canteen.deleteMany({ collegeId });
+
+    // Now delete the college itself
+    await College.findByIdAndDelete(collegeId);
+
+    res.status(200).json({ message: "College and linked canteens deleted successfully" });
   } catch (error) {
+    console.error("Delete college error:", error);
     res.status(500).json({ error: error.message });
   }
 };

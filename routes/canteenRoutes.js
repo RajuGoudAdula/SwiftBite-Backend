@@ -1,6 +1,6 @@
 const express = require('express');
 const {} = require('../controllers/canteen/canteenController.js');
-const {getMenuItems,getMenuItemById,addMenuItem,updateMenuItem,deleteMenuItem} = require('../controllers/canteen/canteenMenuController.js');
+const {getMenuItems,getMenuItemById,addMenuItem,updateMenuItem,deleteMenuItem, getMenuByCanteen} = require('../controllers/canteen/canteenMenuController.js');
 const {getOrders,updateOrderStatus} = require('../controllers/canteen/canteenOrderController.js');
 const {} = require('../controllers/canteen/canteenProfileController.js');
 const {getAllReviewsForCanteen, respondToReview, getCanteenFeedbacks, deleteReview} = require('../controllers/canteen/canteenReviewController.js');
@@ -14,7 +14,7 @@ const authMiddleware = require('../middleware/auth.js');
 const router = express.Router();
 
 // Menu Item Routes
-router.get("/menu",authMiddleware("canteen"), getMenuItems);
+router.get("/menu/:canteenId",authMiddleware("canteen"), getMenuItems);
 router.get("/menu/:id",authMiddleware("canteen"), getMenuItemById);
 router.post("/menu/:canteenId",authMiddleware("canteen"), addMenuItem);
 router.put("/menu/:id",authMiddleware("canteen"), updateMenuItem);
@@ -30,11 +30,11 @@ router.get('/:canteenId',authMiddleware("canteen"),getCanteenFeedbacks);
 router.delete('/:canteenId/delete-review/:reviewId/:userId/:productId/:orderId',authMiddleware("canteen"),deleteReview);
 
 //Dashboard
-router.get("/orders/today",authMiddleware("canteen"),getTodayOrders);
-router.get("/orders/pending",authMiddleware("canteen"),getPendingOrders);
-router.get("/revenue/today",authMiddleware("canteen"),getTotalRevenue);
+router.get("/orders/:canteenId/today",authMiddleware("canteen"),getTodayOrders);
+router.get("/orders/:canteenId/pending",authMiddleware("canteen"),getPendingOrders);
+router.get("/revenue/:canteenId/today",authMiddleware("canteen"),getTotalRevenue);
 router.get("/menu/popular",authMiddleware("canteen"),getPopularItem);
-router.get("/orders/recent",authMiddleware("canteen"),getRecentActivity);
+router.get("/orders/:canteenId/recent",authMiddleware("canteen"),getRecentActivity);
 router.put("/:canteenId/update-canteen",authMiddleware("canteen"),toggleCanteen);
 router.get("/:canteenId/canteen-status",authMiddleware("canteen"),getCanteenStatus);
 
